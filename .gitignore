@@ -1,0 +1,8 @@
+# secrets / local env (row 15 fallback): never commit
+.env
+.env.*
+!.env.example
+
+# local tooling state
+.helpers/
+node_modules/
