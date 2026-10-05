@@ -7,3 +7,5 @@ Built with the build-system pipeline. This README is a temporary stub. The plan'
 replaces it with one of the locked schemas.
 
 - Requirements tollgate: [docs/tollgate/2026-10-05-tollgate.md](docs/tollgate/2026-10-05-tollgate.md)
+- Resource pack (rules, judging weights, tracks, sponsor SDK facts, verified BSC addresses, prior art):
+  [docs/resources/2026-10-05-bnb-hack-tokenized-stocks/INDEX.md](docs/resources/2026-10-05-bnb-hack-tokenized-stocks/INDEX.md)
