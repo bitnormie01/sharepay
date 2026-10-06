@@ -2,6 +2,14 @@
 
 > "SharePay" is a provisional working title, and the builder may rename it. This brief is the single source of
 > truth handed to the architect (Step 1). It fixes **what** and **why**, not how. It is a brief, not a spec.
+>
+> **Revised 2026-10-06** after a read-only pass of the builder Telegram
+> (`docs/resources/2026-10-05-bnb-hack-tokenized-stocks/telegram-intel-2026-10-06.md`).
+> - B402 merchant credentials look unavailable to hackathon teams, so the merchant now **self-settles**
+>   x402 by default.
+> - A consumer "ask, paid in shares" surface was added.
+> - Hosting (`40304`), Agentic Wallet session, Ondo routing and Agent Studio facts were added.
+> - The verdict is unchanged: SharePay still wins the rubric.
 
 ## Event + constraints
 
@@ -46,8 +54,8 @@ able to pay.
 ## Solution (one line)
 
 Pay x402 bills with tokenized stocks on BSC. An agent wallet holding only bStocks/Ondo sells just enough
-shares to settle each HTTP 402 payment through b402. A companion merchant agent sweeps what it earns back
-into tokenized stocks.
+shares to settle each HTTP 402 payment. A companion merchant agent settles what it earns on-chain and
+sweeps it back into tokenized stocks.
 
 ## Must-have demo features (the minimum that makes the money shot land)
 
@@ -55,28 +63,41 @@ into tokenized stocks.
    - **Choose the leg.** On an HTTP 402 it picks which holding to sell, using a market-status-aware
      liquidation order:
      - RWA Data `statusInfo` (open, closed, paused, limited).
-     - Trading API route availability: the bStock SWAP/RFQ mix and Ondo's RFQ-only route.
+     - Trading API route availability: the bStock SWAP/RFQ mix, and Ondo's documented RFQ route. A
+       builder has also observed an Ondo SWAP route, so the code must not assume "Ondo = RFQ".
      - Ondo's minimum order size.
-     - It skips anything halted or paused.
+     - It skips anything halted or paused, and treats unknown `marketStatus` values (e.g. the
+       undocumented `offhours`) defensively.
    - **Dry-run.** It dry-runs every signed-transaction leg with Transaction API `simulate`.
    - **Sell.** It sells just enough shares via Agentic Wallet `market-order swap`. Judges' hosted path
      uses an API-signed swap instead.
    - **Pay.** It pays via `baw x402-payment preview/sign` (EIP-3009 U/USD1, no approval).
    - **Real merchants.** It must work against the builder's own merchant (feature 2) **and** at least
-     one live third-party x402 merchant on BSC mainnet (see the feasibility notes).
+     one live third-party x402 merchant on BSC mainnet. Those merchants settle through their own
+     facilitator, which keeps b402 in the end-to-end flow.
 2. **Stock-sweeping x402 merchant agent (seller side).**
-   - It serves a paid endpoint (x402 V2) that verifies and settles each payment through **b402**
-     (`/api/v2/b402/verify` + `/settle`; the facilitator pays the gas).
+   - It serves a paid x402 V2 `exact` endpoint, priced in U (or USD1), and **settles each payment
+     itself**: it verifies the buyer's EIP-3009 authorization and submits `transferWithAuthorization`
+     on-chain, paying a few cents of gas.
+   - This is the main path because B402 merchant credentials look unavailable to hackathon teams (see the
+     feasibility notes). If credentials are granted, b402 `verify`/`settle` (or Studio's
+     `[payments.b402_seller]` rail) replaces self-settlement with no change to the buyer.
    - Revenue above a float threshold is swept into a tokenized index (e.g. `SPYB`) through the Trading
      and Transaction APIs.
-   - It is built with **BNB Agent Studio** and carries an **ERC-8004 identity on BSC mainnet**.
-3. **Plain-language share ledger (the judge-facing surface).** A live web view that shows:
-   - **Holdings in shares, not tokens.** Both agents' holdings are multiplier-normalized: bStock
-     `uiMultiplier`, Ondo `tokenToShareRatio`.
-   - **Receipts.** Every payment reads like "Paid $0.05 with 0.00026 NVIDIA shares", with BscScan links
-     and market-status badges.
-   - **A "Run a paid call" button** a judge can press. It is a `simulate` dry-run by default; live mode is
-     rate-limited and spends cents.
+   - It is built with **BNB Agent Studio**, carries an **ERC-8004 identity on BSC mainnet**, and is
+     self-hosted. The paid endpoint must not depend on an LLM.
+3. **Consumer surface "ask, paid in shares" + plain-language share ledger** (the Product & UX and
+   judge-facing surface). A live web app with two views:
+   - **Ask.** A non-crypto user types a question about a stock. SharePay buys the premium answer over x402
+     from the merchant or the Agent Studio stock analyst, by selling a sliver of the user's shares. It
+     shows the answer with a share-denominated receipt, and no stablecoins or gas are in view.
+   - **Ledger.** It shows:
+     - **Holdings in shares, not tokens.** Both agents' holdings are multiplier-normalized: bStock
+       `uiMultiplier`, Ondo `tokenToShareRatio`.
+     - **Receipts.** Every payment reads like "Paid $0.05 with 0.00026 NVIDIA shares", with BscScan links
+       and market-status badges.
+     - **A "Run a paid call" button** a judge can press. It is a `simulate` dry-run by default; live mode
+       is rate-limited and spends cents.
 
 ## Target sponsor track(s)
 
@@ -90,7 +111,9 @@ into tokenized stocks.
   status.
 - **Best Use of BNB Agent Studio ($2,000).** The criterion is "agent identity, autonomous runtime,
   self-funding via x402". The merchant agent is built with Studio, registers on ERC-8004 (BSC mainnet),
-  sells via x402, and funds itself through the sweep.
+  sells via x402 (self-settled; Studio's B402 seller rail only if credentials are issued), and funds
+  itself through the sweep. It is self-hosted, because the managed trial is not meant to host agents
+  through judging.
 
 ## Judging criteria (published)
 
@@ -126,20 +149,34 @@ of x402 payments. No BSC rival, and no official demo, spends or earns shares thi
 neighbour is `kimsabin725/superstock` (tipping creators in tokenized stocks on X Layer), which uses no
 x402/b402 and is not on BSC.
 
-**Head-to-head.** The deepest rival is `Assassin859/executable-gap-desk` (Agentic Wallet fills, an MCP
-server, a Studio agent and x402).
-- **Creativity & originality: SharePay wins.** It chains b402 verify/settle, the RWA market-status feed
-  and RFQ/SWAP-aware Trading API execution into one payment pipeline nobody else attempts. Gap gates
-  restate the organizers' own idea list.
-- **Technical implementation: no clear loss.** SharePay matches that rival's integration depth, and adds
-  the b402 merchant leg and Transaction API dry-runs on every SWAP leg.
+**Telegram re-check (2026-10-06).** The builder Telegram, read from Jul 6 to Oct 6, adds 15
+tokenized-stock projects (13 of them new to us).
+- They cluster on cross-issuer gap / fair price (about 16 entries overall), guards, trading/DCA agents,
+  research, and chat-first trading (Sharebloom on WhatsApp).
+- **No one uses tokenized stocks as an x402 payment source or sweep destination.** The nearest is
+  Roost's Agent Studio seller, which sells a spread report over x402 and is currently priced at $0.
+
+**Head-to-head**, against the three strongest rivals:
+1. Roost (`neromtoobad/roost`): a live consumer app with an Agentic Wallet skill, a Studio seller and
+   ERC-8004.
+2. `Assassin859/executable-gap-desk`: Agentic Wallet fills, MCP, a Studio agent and x402.
+3. CaptainX's mainnet bStocks agent: Agentic Wallet with x402 keep-alive.
+
+How SharePay compares:
+- **Creativity & originality: wins against all three.** It turns the RWA market-status feed,
+  RFQ/SWAP-aware Trading API execution and an on-chain x402 settlement into one payment pipeline funded by
+  shares. Their angles sit in crowded clusters (spread selling, gap gates, indicator trading).
+- **Technical implementation: ties** Roost and the gap desk on depth, and adds a real settled payment leg
+  that Roost's $0 seller lacks.
+- **Product & UX: loses to Roost as originally briefed.** The consumer "ask, paid in shares" surface
+  (must-have 3) narrows that to a tie or slight loss.
 
 ## Demo money shot (~15 seconds)
 
 1. The buyer agent's balance on screen is **100% NVIDIA shares (NVDAB), zero stablecoins**.
 2. It requests the merchant agent's paid endpoint and gets **HTTP 402**.
-3. SharePay sells 0.0003 NVDAB and pays 0.05 U through b402. The endpoint returns **200**, and the
-   receipt reads "Paid $0.05 with 0.0003 NVIDIA shares".
+3. SharePay sells 0.0003 NVDAB and signs a 0.05 U EIP-3009 authorization, which the merchant settles
+   on-chain. The endpoint returns **200**, and the receipt reads "Paid $0.05 with 0.0003 NVIDIA shares".
 4. In the other pane, the merchant agent **sweeps the payment into S&P 500 shares (SPYB)**.
 
 That is one HTTP request and three BSC mainnet transactions: shares in, shares out.
@@ -153,8 +190,8 @@ Studio stock analyst, for an NVDA report, by selling NVDA shares.
   on/off-ramps, cards or KYC flows.
 - **Contracts and infrastructure:**
   - No custom smart contracts, including no vault and no escrow contract.
-  - No own payment facilitator: b402 is the facilitator, and self-settlement is only the documented
-    fallback below.
+  - No general-purpose facilitator service: the merchant settles only its own x402 payments
+    (EIP-3009). b402 is used if credentials are granted.
   - No ERC-8183 job escrow (stretch only).
 - **Assets:** no xStocks execution (negligible BSC liquidity, and absent from the RWA Data API), at most
   display-only.
@@ -187,6 +224,14 @@ checked live on 2026-10-05 by idea-forge.
 - **Region rule:** "IP checks are enforced on both the Developer Portal and the API server side." Host
   any API-calling server **outside** the restricted list (US + territories, CA, NL, GB, IR, CU, KP,
   Crimea/DPR/LPR; JP conditional).
+- **`40304` "Service not available due to compliance restriction"** *(Telegram, participant reports, no
+  organizer answer)*:
+  - Five teams hit it, from a Cloudflare Worker, US Vercel, serverless hosting, a deployed server, and
+    GitHub Actions plus a local machine in Nigeria.
+  - One participant reports that the Singapore region works.
+  - Pick the host by testing it, not by assuming.
+- **Organizer on rate limits** (Gwen, Sep 16/18): the limit is "already 5 requests per second". Ping
+  Gwen if you hit the cap and they'll handle it manually.
 
 **RWA Data API** (§3)
 - **Endpoints:** `GET /api/v1/dex/market/rwa/{platforms, price, search, underlying-profile, tokens,
@@ -197,6 +242,8 @@ checked live on 2026-10-05 by idea-forge.
   - `reasonCode` ∈ `TRADING, MARKET_CLOSED, MARKET_PAUSED, MARKET_MAINTENANCE, ASSET_PAUSED, ASSET_LIMITED,
     UNSUPPORTED`.
   - `nextOpenTime` / `nextCloseTime` (Unix ms).
+- **Undocumented status:** a participant saw `marketStatus = "offhours"` (not in the enum) with
+  `openState=true`, `reasonCode=TRADING` for NVDAon *(Telegram, Sep 27 / Oct 5)*.
 - **`tokenToShareRatio`:** "1 token ≈ N underlying shares".
 - **Caveat:** `referencePrice` is "derived from the on-chain token price, not an official quote".
 
@@ -204,6 +251,8 @@ checked live on 2026-10-05 by idea-forge.
 - "**Ondo tokens** … Always routed via **3-vendor RFQ** (InchFusion + CowSwap + PcsXRfq)."
 - "**BStock tokens** … Routed via **LiquidMesh (SWAP) + PcsXRfq (RFQ)** in a mixed result."
 - "**xStock tokens** … regular AMM liquidity pools — no RFQ route."
+- **Observed exception:** a participant got a LiquidMesh `executionMode=SWAP` route for **NVDAon**,
+  against the docs' "always RFQ" *(Telegram, Oct 5)*.
 
 **Trading API mechanics** (§4)
 - **RFQ flow:** `GET /quote → GET /swap → Sign rfq.typedDataToSign (EIP-712) → POST /order/submit → GET
@@ -232,6 +281,13 @@ checked live on 2026-10-05 by idea-forge.
 - **RFQ legs** are EIP-712 orders, not simulatable transactions (§5 INFERENCE).
 
 **b402 merchant facts** (§6 and the b402 docs)
+- **Access status (Telegram, 2026-10-06): treat as unavailable.**
+  - Two builders found the B402 credential application form locked: one saw "you need permission" (Sep 1),
+    the other a no-access notice (Sep 23).
+  - No organizer answered in public.
+  - The launch FAQ's stack list omits b402.
+  - The most advanced rival's Studio seller runs `price_usd = "0"`, which its config says "bypasses B402".
+  - Request access anyway, but don't depend on it.
 - **Endpoints:** `POST /api/v2/b402/{supported, verify, settle}`, called from a trusted backend.
 - **Onboarding** (verbatim): "complete the B402 Payments application, and configure the write-once
   `payTo` address". Then create an API key in the same project with **B402 Payments** permission.
@@ -249,6 +305,19 @@ checked live on 2026-10-05 by idea-forge.
 - **Do not confuse the Permit2 contracts.** PancakeSwap's Permit2 `0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768`
   is a different contract.
 
+**Self-settlement facts** *(this session, BSC RPC, 2026-10-06)*
+- U and USD1 implement EIP-3009 `transferWithAuthorization` (b402 docs: "supported tokens implement
+  `transferWithAuthorization` directly").
+- **U EIP-712 domain:**
+  - name: `name()` returns `"United Stables"`.
+  - version: there is no `version()` or `eip712Domain()` getter. Version **"1"** was derived by matching
+    `DOMAIN_SEPARATOR()` = `0x358738403e5a61fdc30a8be78a60f289cbe4d2545b735a344b6229c70c1679b6`.
+  - chainId 56; verifyingContract is the token address.
+- **USD1 EIP-712 domain:**
+  - name: `"World Liberty Financial USD"`.
+  - version: **"1"**, derived the same way. `DOMAIN_SEPARATOR()` =
+    `0x5d939dc193fd011c5e26fb861450a696546a09db6b26db26501fe354ba3ed4ba`.
+
 **Agentic Wallet** (§8 and the bStock competition doc)
 - **Install:** `npx skills add binance/binance-skills-hub/skills/binance-web3/binance-agentic-wallet`.
 - **CLI:** `baw` from npm `@binance/agentic-wallet` 1.10.0.
@@ -262,6 +331,8 @@ checked live on 2026-10-05 by idea-forge.
 - **Operational traps:**
   - **"Login expires, and sign-out is silent"**, so judges' runs need a non-AW hosted path. AW stays the
     primary path in the video and in local runs.
+  - Builders in Telegram report a session of about 48 h. One says periodic x402 calls keep it alive
+    *(participant claim, unverified)*. SharePay's buyer makes x402 calls anyway, but plan for re-sign-in.
   - x402 daily payment cap: the competition doc gives "fixed at 20 USD".
   - Limits are set only in the Binance App.
   - There is **no testnet**.
@@ -285,6 +356,16 @@ checked live on 2026-10-05 by idea-forge.
 - **Runtime trap** (verbatim): the managed trial is "Testnet-only" for 48 h. Mainnet needs the self-paid
   `aws`/`azure`/`nodeops` hosts, or a manual `bag erc8004 register --endpoint <url>` for a self-hosted
   endpoint. The `envvars` secrets mode is "testnet only — refused on mainnet".
+- **Organizer, previous hack (Stefano, Aug 24):** the 48 h managed trial is "by design … not for
+  hosting agents through judging". Self-deploy instead ("AWS and Azure are supported"). Roost runs its
+  Studio agent copy on Railway.
+- **Studio's B402 seller rail** (from Roost's public `studio.toml`):
+  - The config section is `[payments.b402_seller]`.
+  - "v1 supports United Stables (U) through EIP-3009 only".
+  - Credentials are "issued per B402 environment".
+  - `price_usd = "0"` "bypasses B402".
+- **Studio default LLM:** Pieverse `auto/free` returns HTTP 429 (two teams), so the paid endpoint must
+  not need an LLM.
 
 **ERC-8004 on BSC mainnet** (§3, code-verified)
 - IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`.
@@ -320,15 +401,25 @@ So the stock → USDT → U/USD1 path and the sweep back into SPYB are executabl
 are idle (Ondo is RFQ-only), and the Ondo minimum (`40375`) is unknown until the first live quote.
 
 **Day-1 external dependencies** (user actions, request immediately)
-1. In the Developer Portal: create the API key with Trading, Market, Wallet, Transaction and B402
-   permissions, **and** complete the **B402 Payments application** (its `payTo` is write-once, so choose
-   the merchant agent's address first). This is the one dependency with unknown approval latency.
-   - **Fallback, a fact rather than a design:** U and USD1 implement EIP-3009 `transferWithAuthorization`.
-     The merchant can settle x402 `exact` payments itself, which keeps the money shot builder-controlled
-     but drops b402 from the seller leg.
+1. In the Developer Portal: create the API key with Trading, Market, Wallet and Transaction permissions,
+   plus B402 if the portal allows it. Use a desktop-width browser; participants report the create button
+   is hidden on mobile.
+   - **Optionally** apply for B402 merchant access. Its `payTo` is write-once, so pick the merchant
+     agent's address first.
+   - The build does **not** wait on B402: the merchant self-settles by default.
 2. Register for the hack (Apply-as-Hacker form) for elevated rate limits.
 3. Agentic Wallet sign-in (Binance App MPC wallet).
 4. Fund the burner wallets: about $10 total (USDT plus about $1 of BNB for gas).
+
+**Day-1 smoke checks** (gate the build on these, cheapest first)
+1. A signed `GET /build/api/v1/dex/market/rwa/tokens?binanceChainId=56` from the **exact hosting region**
+   returns `code 0`, not `40304`.
+2. `baw x402-payment preview` accepts a requirement from **our own** self-hosted x402 V2 `exact` merchant
+   (U, `eip155:56`), not only from B402-configured merchants.
+   - If it doesn't, the buyer pays our merchant with a locally signed EIP-3009 authorization on the API
+     path.
+   - Agentic Wallet then pays only the third-party merchants.
+3. A live quote for one Ondo leg reveals the `40375` minimum and whether a SWAP route appears.
 
 **Longest pole.** The liquidation-order engine has to choose correctly across market sessions, RFQ
 versus SWAP, Ondo minimums, halts and multiplier normalization, and every failure path must stay
@@ -395,3 +486,18 @@ Risk posture is neutral.
 - **Gift-a-Share** is clean but shallow on API depth and novelty.
 
 SharePay won the head-to-head on Creativity with no clear loss elsewhere. Committed.
+
+**Re-check, 2026-10-06** (Telegram intel; same weights)
+
+| Candidate | Build ×30 | Novelty ×25 | Depth/fit ×25 | WOW/UX ×20 | Total |
+|---|:-:|:-:|:-:|:-:|:-:|
+| **SharePay, edited** (self-settling merchant + "ask, paid in shares" surface) | 4 | 5 | 4 | 4 | **425** |
+| On-chain 13F copy-portfolios (no Telegram rival; holder-data risk unchanged) | 3 | 4 | 5 | 5 | 415 |
+| SharePay as first briefed (B402 merchant assumption broken, builder-only UI) | 4 | 5 | 4 | 3 | 405 |
+| Gift-a-Share claim links | 5 | 3 | 3 | 5 | 400 |
+
+- Depth/fit drops from 5 to 4 because our own b402 `verify`/`settle` calls are likely unavailable.
+- Novelty stays 5: the Telegram pass found no rival funding or settling x402 with shares.
+- The lead over 13F is now 10 points. The two edits (self-settlement as the main path, and the consumer
+  surface) are what keep SharePay ahead, so they are must-haves, not polish.
+- Verdict: **keep SharePay, with edits.**
