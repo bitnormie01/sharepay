@@ -1,8 +1,10 @@
 # SharePay — "Pay with shares" checkout for x402 on BSC (design spec)
 
-- **Date:** 2026-10-06 (architect, Step 1). **Status:** approved design. Sections 1–2 were approved by the
-  user; sections 3–4 were approved under the user's standing instruction, after independent sub-agent
-  verification with all fixes applied.
+- **Date:** 2026-10-06 (architect, Step 1). **Status:** approved design.
+  - Design sections 1 (architecture, §3 here) and 2 (pipeline, §4) were approved by the user.
+  - Sections 3 (UX and API, §5–§7) and 4 (ops, testing, risks, schedule, §8–§12) were approved under the
+    user's standing instruction, after independent sub-agent verification with all fixes applied.
+  - A spec-document review (sub-agent) returned **Approved**; its advisory notes are applied.
 - **Source brief:** `docs/idea-forge/2026-10-05-sharepay-brief.md` (revised 2026-10-06).
 - **Resource pack:** `docs/resources/2026-10-05-bnb-hack-tokenized-stocks/`.
 - **Plans:** `docs/superpowers/plans/2026-10-06-{core,merchant,buyer,app,ops}.md`. Task DAG:
@@ -157,7 +159,29 @@ scripts/           smoke.ts, ops.ts, devex-summary.ts (+ scripts/lib, scripts/te
 | Test helpers | `supertest ^7.3.1`, `jsdom ^26.1.0`, `@testing-library/react ^16.3.3`, `@testing-library/jest-dom ^6.10.0`, `@testing-library/user-event ^14.6.7` |
 | Studio CLI | `@bnbagent/studio-cli 0.0.14` (devDependency) |
 
-### 3.3 Binance Web3 API usage
+### 3.3 Token registry (`packages/core/src/tokens.ts`; all 18 decimals, BSC chain 56)
+
+Addresses come from the resource pack and were verified on-chain.
+
+| Symbol | Kind | Display name | Platform | Address |
+|---|---|---|---|---|
+| NVDAB | stock | NVIDIA | bstock | `0x02fca66c1d1afb4e2a7884261eb00f63598a7436` |
+| TSLAB | stock | Tesla | bstock | `0x5b1910eaad6450e50f816082aa078c41f10c292f` |
+| AAPLB | stock | Apple | bstock | `0x431a3bee82e2ca41e49895cbece5bb0f76a89b7a` |
+| SPYB | stock | S&P 500 | bstock | `0x7138b48df7d98d7e3cc221bfe7192d0a178182d8` |
+| NVDAon | stock | NVIDIA (Ondo) | ondo | `0xa9ee28c80f960b889dfbd1902055218cba016f75` |
+| TSLAon | stock | Tesla (Ondo) | ondo | `0x2494b603319d4d9f9715c9f4496d9e0364b59d93` |
+| SPYon | stock | S&P 500 (Ondo) | ondo | `0x6a708ead771238919d85930b5a0f10454e1c331a` |
+| U | stable (EIP-3009 "United Stables" v1) | U | n/a | `0xce24439f2d9c6a2289f741120fe202248b666666` |
+| USD1 | stable (EIP-3009 "World Liberty Financial USD" v1) | USD1 | n/a | `0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d` |
+| USDT | stable (no EIP-3009) | USDT | n/a | `0x55d398326f99059ff775485246999027b3197955` |
+
+Other constants:
+- Aggregation router `0xb44446b0c8e56988c34f7ff73ae904982b5fdda5`.
+- x402 network `eip155:56`.
+- Binance chain id `"56"`.
+
+### 3.4 Binance Web3 API usage
 
 | Module | Endpoints | Used for |
 |---|---|---|
@@ -327,7 +351,7 @@ Order: verify → build the report (cached; a report failure returns 503 **befor
 - Summary lines (fixed templates), a disclaimer, and sources (the endpoints called plus the time).
 - A markdown rendering.
 
-**Disclaimer** (C7 conflict): "Generated deterministically from Binance Web3 RWA Data API responses at <time>. On-chain implied per-share prices are derived from on-chain token prices, not exchange quotes. Not investment advice."
+**Disclaimer.** Conflict C7 in the pack's `event.md`: `referencePrice` is "derived from the on-chain token price, not an official quote", so per-issuer prices are on-chain-implied. The disclaimer reads: "Generated deterministically from Binance Web3 RWA Data API responses at <time>. On-chain implied per-share prices are derived from on-chain token prices, not exchange quotes. Not investment advice."
 
 **Caching:** 60 s per symbol, single-flight, which keeps the RWA endpoints under 5 RPS.
 
@@ -421,7 +445,8 @@ Order: verify → build the report (cached; a report failure returns 503 **befor
 **Live gate:**
 - `LIVE_PASSCODE` comes from the environment; it is never committed, never put in a query string, and compared in constant time (`crypto.timingSafeEqual` on SHA-256 digests).
 - Attempts are throttled to 5 failures per IP per 10 min (then `live_locked_out` for that IP), with a global lockout after 50 failures per hour.
-- Daily cap: `LIVE_DAILY_MAX_COUNT` (10) and `LIVE_DAILY_MAX_USD` (1.50) per UTC day. A slot is **reserved** at POST, **released** if the checkout fails before step 5, and **consumed** once step 5 succeeds. The counter is in-memory; the burner's small balance is the hard ceiling.
+- Daily cap: `LIVE_DAILY_MAX_COUNT` (10) and `LIVE_DAILY_MAX_USD` (1.50) per UTC day. A slot is **reserved** at POST, **released** if the checkout fails before step 4 broadcasts the sale, and **consumed** as soon as the sale is broadcast. Any spend therefore counts. The counter is in-memory; the burner's small balance is the hard ceiling.
+- `BudgetResponse` = `{liveAvailable: boolean, remainingCount: number, remainingUsd: string}`.
 
 **DTOs** (`packages/core/src/dto.ts`, imported by the web as `@sharepay/core/dto`): `CheckoutStep`, `CheckoutState` (incl. `deliverable`, `etaSec`, `jobStartedAt`, `lastPolledAt`), `Receipt`, `Deliverable`, `CatalogItem`, `PickerOption`, `PickerResponse`, `LedgerResponse`, `MerchantActivity`, `BudgetResponse`, `ResearchReportDto`. The exact shapes are in plan `core` Task 10.
 
@@ -461,7 +486,8 @@ Order: verify → build the report (cached; a report failure returns 503 **befor
 - `render.yaml` defines two free Singapore web services, Node from `.node-version`, with secrets marked `sync: false`.
 - Merchant service: start command `npm run start:merchant` (tsx `sharepaymerchant/app/agent/src/unifiedMain.ts`, cwd `sharepaymerchant/app/agent`); health check `/ping`.
 - Checkout service: build command `npm ci && npm run build:web`; start command `npm run start:checkout`; health check `/api/health`.
-- Keep-awake: an external 10-minute ping on the checkout only (Oct 8–31 ≈ 576 h).
+- Keep-awake: an external 10-minute ping on the checkout only (Oct 8–31 ≈ 576 h). That leaves ≈ 174 h of the 750 h pool for the merchant's wake-on-demand hours. That is ample, because the merchant sleeps 15 min after its last request.
+- If `AW_PAYS_OWN_MERCHANT=false` after G2, the money shot runs with `WALLET_MODE=api-signer` locally. It still pays with NVIDIA shares from the burner. The Agentic Wallet pays both third-party merchants on camera.
 
 **Budget (~$10):**
 
