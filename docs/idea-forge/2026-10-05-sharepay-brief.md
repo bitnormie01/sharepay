@@ -7,7 +7,9 @@
 > (`docs/resources/2026-10-05-bnb-hack-tokenized-stocks/telegram-intel-2026-10-06.md`).
 > - B402 merchant credentials look unavailable to hackathon teams, so the merchant now **self-settles**
 >   x402 by default.
-> - A consumer "ask, paid in shares" surface was added.
+> - A consumer surface was added. A later 2026-10-06 revision reframed it as a **"Pay with shares"
+>   checkout** for 2–3 real x402 digital services; the money shot is now buying an NVDA research report
+>   with NVIDIA shares.
 > - Hosting (`40304`), Agentic Wallet session, Ondo routing and Agent Studio facts were added.
 > - The verdict is unchanged: SharePay still wins the rubric.
 
@@ -53,9 +55,9 @@ able to pay.
 
 ## Solution (one line)
 
-Pay x402 bills with tokenized stocks on BSC. An agent wallet holding only bStocks/Ondo sells just enough
-shares to settle each HTTP 402 payment. A companion merchant agent settles what it earns on-chain and
-sweeps it back into tokenized stocks.
+"Pay with shares": a checkout for real x402 digital services on BSC. An agent wallet holding only
+bStocks/Ondo sells just enough shares to settle each HTTP 402 payment. A companion merchant agent settles
+what it earns on-chain and reinvests it into tokenized stocks.
 
 ## Must-have demo features (the minimum that makes the money shot land)
 
@@ -86,18 +88,32 @@ sweeps it back into tokenized stocks.
      and Transaction APIs.
    - It is built with **BNB Agent Studio**, carries an **ERC-8004 identity on BSC mainnet**, and is
      self-hosted. The paid endpoint must not depend on an LLM.
-3. **Consumer surface "ask, paid in shares" + plain-language share ledger** (the Product & UX and
-   judge-facing surface). A live web app with two views:
-   - **Ask.** A non-crypto user types a question about a stock. SharePay buys the premium answer over x402
-     from the merchant or the Agent Studio stock analyst, by selling a sliver of the user's shares. It
-     shows the answer with a share-denominated receipt, and no stablecoins or gas are in view.
-   - **Ledger.** It shows:
-     - **Holdings in shares, not tokens.** Both agents' holdings are multiplier-normalized: bStock
-       `uiMultiplier`, Ondo `tokenToShareRatio`.
-     - **Receipts.** Every payment reads like "Paid $0.05 with 0.00026 NVIDIA shares", with BscScan links
-       and market-status badges.
-     - **A "Run a paid call" button** a judge can press. It is a `simulate` dry-run by default; live mode
-       is rate-limited and spends cents.
+3. **"Pay with shares" checkout for real x402 digital services** (the Product & UX and judge-facing
+   surface). This is a live web app.
+   - **Catalog.** It lists 2–3 real, live paid services. Each is a real x402 endpoint on BSC mainnet;
+     there are no mock merchants.
+     - **NVDA research report** from SharePay's own merchant (feature 2), about $0.05. It is assembled
+       deterministically from RWA Data (underlying profile and market data, attestation links, issuer
+       comparison and market status), with no LLM.
+     - **BNB Chain's Agent Studio stock analyst:** a full NVDA report, about 0.1 U.
+     - **CoinMarketCap x402:** e.g. the `us_equity_research_dossier` skill via `execute_skill`, about
+       $0.01.
+   - **"Pay with shares" button** on every item. For anonymous visitors (judges) it is a `simulate`
+     dry-run by default. Live mode is rate-limited and spends cents.
+   - **Stock picker.** The user chooses which holding pays. It **greys out stocks that can't pay right
+     now, and says why**:
+     - closed: "Weekend or Holiday", with `nextOpenTime`;
+     - paused: e.g. `cash_dividend`, `stock_split`;
+     - limited: `earnings`;
+     - no live route, or below the Ondo minimum.
+     The reasons come from RWA `statusInfo` and the Trading API route check.
+   - **Share-denominated receipt**, e.g. "Paid $0.05 with 0.0003 NVIDIA shares", with BscScan links. No
+     stablecoins or gas are in view.
+   - **Expandable "how it worked" step list**, one step per real event: HTTP 402 received → shares
+     quoted → swap simulated → shares sold (tx) → EIP-3009 authorization signed → merchant settled
+     (tx) → 200 delivered → merchant reinvested into SPYB (tx, own merchant only).
+   - **Ledger view.** It shows holdings in shares, not tokens, multiplier-normalized (bStock
+     `uiMultiplier`, Ondo `tokenToShareRatio`), plus the history of receipts.
 
 ## Target sponsor track(s)
 
@@ -168,26 +184,41 @@ How SharePay compares:
   shares. Their angles sit in crowded clusters (spread selling, gap gates, indicator trading).
 - **Technical implementation: ties** Roost and the gap desk on depth, and adds a real settled payment leg
   that Roost's $0 seller lacks.
-- **Product & UX: loses to Roost as originally briefed.** The consumer "ask, paid in shares" surface
-  (must-have 3) narrows that to a tie or slight loss.
+- **Product & UX: loses to Roost as originally briefed.** The "Pay with shares" checkout (must-have 3)
+  narrows that to a tie or slight loss. It is a familiar checkout pattern over real merchants, with
+  greyed-out reasons and plain-language receipts.
 
 ## Demo money shot (~15 seconds)
 
-1. The buyer agent's balance on screen is **100% NVIDIA shares (NVDAB), zero stablecoins**.
-2. It requests the merchant agent's paid endpoint and gets **HTTP 402**.
-3. SharePay sells 0.0003 NVDAB and signs a 0.05 U EIP-3009 authorization, which the merchant settles
-   on-chain. The endpoint returns **200**, and the receipt reads "Paid $0.05 with 0.0003 NVIDIA shares".
-4. In the other pane, the merchant agent **sweeps the payment into S&P 500 shares (SPYB)**.
+**Buying an NVDA research report with NVIDIA shares.**
 
-That is one HTTP request and three BSC mainnet transactions: shares in, shares out.
+1. The checkout shows **"NVDA research report, $0.05"**. The wallet holds **only NVIDIA shares (NVDAB),
+   zero stablecoins**.
+2. The user taps **"Pay with shares"**. The picker offers NVIDIA, with any closed or paused stock greyed
+   out and its reason shown. The user picks NVIDIA.
+3. HTTP 402. SharePay sells 0.0003 NVDAB and signs a 0.05 U EIP-3009 authorization, which the merchant
+   settles on-chain. The report unlocks (**200**), and the receipt reads "Paid $0.05 with 0.0003 NVIDIA
+   shares".
+4. In the other pane, the merchant agent **reinvests the payment into S&P 500 shares (SPYB)**.
 
-Second beat (not the money shot): the same wallet pays a live third-party merchant, BNB Chain's Agent
-Studio stock analyst, for an NVDA report, by selling NVDA shares.
+That is one checkout and three BSC mainnet transactions: shares in, shares out. The expandable step list
+shows each one.
+
+Second beat (not the money shot): the same checkout buys from real third-party x402 merchants with NVIDIA
+shares, showing it works with any x402 merchant:
+- BNB Chain's Agent Studio stock analyst. Payment is immediate; the report arrives asynchronously in
+  about 2–5 minutes.
+- A CoinMarketCap call.
 
 ## Out of scope (explicit — keeps the build on the money shot)
 
 - **Products:** no perps, leverage or shorting; no lending, borrowing or stocks-as-collateral; no fiat
   on/off-ramps, cards or KYC flows.
+- **Checkout scope:**
+  - No physical goods and no shipping. The catalog sells digital x402 services only.
+  - No fake or mock merchants: every catalog item is a real, live x402 endpoint.
+  - No claim beyond "works with any x402 merchant". No "pay anywhere", card network, point-of-sale or
+    Binance Pay merchant claims.
 - **Contracts and infrastructure:**
   - No custom smart contracts, including no vault and no escrow contract.
   - No general-purpose facilitator service: the merchant settles only its own x402 payments
@@ -242,6 +273,11 @@ checked live on 2026-10-05 by idea-forge.
   - `reasonCode` ∈ `TRADING, MARKET_CLOSED, MARKET_PAUSED, MARKET_MAINTENANCE, ASSET_PAUSED, ASSET_LIMITED,
     UNSUPPORTED`.
   - `nextOpenTime` / `nextCloseTime` (Unix ms).
+  - `reasonMsg` (these drive the picker's greyed-out reasons, `sponsors/binance-web3-wallet.md` §3):
+    - for `ASSET_PAUSED`, one of `cash_dividend, stock_dividend, stock_split, merger, acquisition,
+      spinoff, maintenance, corporate action`;
+    - for `ASSET_LIMITED`, `earnings`;
+    - the common closed case reads "Weekend or Holiday".
 - **Undocumented status:** a participant saw `marketStatus = "offhours"` (not in the enum) with
   `openState=true`, `reasonCode=TRADING` for NVDAon *(Telegram, Sep 27 / Oct 5)*.
 - **`tokenToShareRatio`:** "1 token ≈ N underlying shares".
@@ -340,10 +376,18 @@ checked live on 2026-10-05 by idea-forge.
 
 **Live third-party x402 merchants on BSC mainnet** (bStock competition doc)
 - **CMC MCP** `https://mcp.coinmarketcap.com/x402/mcp`, about $0.01 a call.
+  - It is MCP / JSON-RPC over x402 and **synchronous**: `tools/call` → 402 → sign → replay with
+    `PAYMENT-SIGNATURE` → 200, with the data in the SSE `data:` line.
+  - A US-equity item for the catalog is `execute_skill` with `unique_name` `us_equity_research_dossier`
+    ("Single-stock research dossier"). The free discovery tools (`tools/list`, `find_skill`, `search_*`)
+    cost nothing.
 - **BNB Chain Agent Studio stock analyst** `https://stock-agent.bnbchain.org`:
   - Endpoints: `GET /x402/price`, `POST /x402/analyze/async` → `202 {jobId, jobToken}`, `GET
     /x402/jobs/{jobId}`.
   - About 0.1 U a call.
+  - It is **asynchronous**: payment returns `202 {jobId, jobToken}`, and the report "usually takes 2~5
+    minutes" to generate. The checkout must show "paid, report generating", then deliver the report when
+    the job succeeds.
   - Limit: 30 calls per rolling hour per wallet.
 
 **BNB Agent Studio** (`sponsors/bnb-chain.md` §2)
@@ -420,6 +464,10 @@ are idle (Ondo is RFQ-only), and the Ondo minimum (`40375`) is unknown until the
      path.
    - Agentic Wallet then pays only the third-party merchants.
 3. A live quote for one Ondo leg reveals the `40375` minimum and whether a SWAP route appears.
+4. Each third-party catalog merchant answers with a live 402 and an `accepts` list today, at no cost:
+   - the Agent Studio stock analyst via `GET /x402/price`;
+   - CMC via an unpaid `tools/call`.
+   An item that doesn't respond is dropped from the catalog, not mocked.
 
 **Longest pole.** The liquidation-order engine has to choose correctly across market sessions, RFQ
 versus SWAP, Ondo minimums, halts and multiplier normalization, and every failure path must stay
@@ -491,7 +539,7 @@ SharePay won the head-to-head on Creativity with no clear loss elsewhere. Commit
 
 | Candidate | Build ×30 | Novelty ×25 | Depth/fit ×25 | WOW/UX ×20 | Total |
 |---|:-:|:-:|:-:|:-:|:-:|
-| **SharePay, edited** (self-settling merchant + "ask, paid in shares" surface) | 4 | 5 | 4 | 4 | **425** |
+| **SharePay, edited** (self-settling merchant + "Pay with shares" checkout) | 4 | 5 | 4 | 4 | **425** |
 | On-chain 13F copy-portfolios (no Telegram rival; holder-data risk unchanged) | 3 | 4 | 5 | 5 | 415 |
 | SharePay as first briefed (B402 merchant assumption broken, builder-only UI) | 4 | 5 | 4 | 3 | 405 |
 | Gift-a-Share claim links | 5 | 3 | 3 | 5 | 400 |
@@ -499,5 +547,8 @@ SharePay won the head-to-head on Creativity with no clear loss elsewhere. Commit
 - Depth/fit drops from 5 to 4 because our own b402 `verify`/`settle` calls are likely unavailable.
 - Novelty stays 5: the Telegram pass found no rival funding or settling x402 with shares.
 - The lead over 13F is now 10 points. The two edits (self-settlement as the main path, and the consumer
-  surface) are what keep SharePay ahead, so they are must-haves, not polish.
+  surface, now a "Pay with shares" checkout over real x402 merchants) are what keep SharePay ahead, so
+  they are must-haves, not polish.
+- The checkout reframe changes no score: it is the same mechanism and the same UX axis, shown through a
+  more familiar pattern.
 - Verdict: **keep SharePay, with edits.**
