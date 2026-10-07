@@ -473,12 +473,12 @@ Order: verify → build the report (cached; a report failure returns 503 **befor
 
 | Gate | What it covers |
 |---|---|
-| G1 | Smoke #1 (signed `GET /rwa/tokens` from this PC: code 0 vs 40304) and smoke #4 (third-party unpaid 402s). Results go into the tollgate and `DEVEX_LOG.md`. |
+| G1 | Smoke #1 (signed `GET /rwa/tokens` from this PC: code 0 vs 40304), smoke #3 (live Ondo quote: 40375 minimum, and whether a SWAP route appears; quotes only, so the API key is enough) and smoke #4 (third-party unpaid 402s). Results go into the tollgate and `DEVEX_LOG.md`. |
 | G2 | Smoke #2: `baw x402-payment preview` of our merchant's real requirement. It decides `AW_PAYS_OWN_MERCHANT`. |
-| G3 | Buy shares (burner via `npm run ops -- buy`; AW via `baw market-order swap`), one-time router approvals (`npm run ops -- approve`), and smoke #3 (live Ondo quote: 40375 minimum, and whether a SWAP route appears). |
-| G4 | Deploy the merchant to Render SG (Blueprint), smoke #1 from Render (`/sharepay/health?deep=1`), then register ERC-8004 (`npx bag erc8004 register --endpoint <merchant URL> --name "SharePay Merchant" --description …`; `--no-paymaster` if the relay stalls). Fallback: PC plus tunnels if Render returns 40304. |
+| G3 | Buy shares (burner via `npm run ops -- buy`; AW via `baw market-order swap`) and one-time router approvals (`npm run ops -- approve`). `npm run ops -- verify-funding` checks NVDAB and TSLAB on both payer wallets and BNB on all three; the public addresses and transactions go into `docs/gates/funding.md`. |
+| G4 | Deploy the merchant to Render SG (Blueprint), smoke #1 from Render (`/sharepay/health?deep=1`), then register ERC-8004 (`npx bag erc8004 register --endpoint <merchant URL> --name "SharePay Merchant" --description …`; `--no-paymaster` if the relay stalls). The gate confirms that the IdentityRegistry's `ownerOf(agentId)` is the merchant's `payTo` wallet. Fallback: PC plus tunnels if Render returns 40304. |
 | G5 | Deploy the checkout to Render SG, then smoke from Render (`/api/health?deep=1`). |
-| G6 | Live money-shot rehearsal (AW: NVDAB → report → SPYB), live stock-analyst and CMC payments with shares, a hosted live-mode check, and the export of real receipts into the committed seed files (verified on-chain). |
+| G6 | Live money-shot rehearsal (AW: NVDAB → report → SPYB), live stock-analyst and CMC payments with shares, a hosted live-mode check, and the export of real receipts into the committed seed files (verified on-chain, at least one paid by the demo wallet on the hosted api-signer path). |
 
 **Ordering:** code tasks never wait on gates. G4 and G5 depend on G1. G6 depends on G2–G5.
 
@@ -499,7 +499,7 @@ Order: verify → build the report (cached; a report failure returns 503 **befor
 | Payments | ~0.05×6 + 0.10×3 + 0.01×3 ≈ $0.63 |
 | **Total** | **≈ $8.2** |
 
-The ≈ $1.8 buffer covers approvals, ERC-8004 gas if it isn't sponsored, the Ondo test, and about 4–6 rehearsal reruns.
+The ≈ $1.8 buffer covers approvals, ERC-8004 gas if it isn't sponsored, and about 4–6 rehearsal reruns. The Ondo smoke only quotes, so it costs nothing.
 
 **Agentic Wallet operations:**
 - Only the user signs in; the session is about 48 h. Verify `maxSigninDuration` with `baw wallet settings --json`, and **re-sign-in before recording**.
