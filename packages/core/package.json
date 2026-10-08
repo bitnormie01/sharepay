@@ -1,0 +1,14 @@
+{
+  "name": "@sharepay/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "viem": "^2.57.3",
+    "zod": "^3.25.76"
+  }
+}

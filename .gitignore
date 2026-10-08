@@ -6,3 +6,11 @@
 # local tooling state
 .helpers/
 node_modules/
+
+# runtime state, telemetry and build output
+devex/
+data/runtime/
+packages/web/dist/
+
+# BNB Agent Studio secrets (keystore + .env.local); never commit
+sharepaymerchant/.studio/

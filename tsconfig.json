@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "packages/core/src",
+    "packages/core/test",
+    "packages/merchant/src",
+    "packages/merchant/test",
+    "packages/buyer/src",
+    "packages/buyer/test",
+    "packages/checkout/src",
+    "packages/checkout/test",
+    "scripts"
+  ]
+}
