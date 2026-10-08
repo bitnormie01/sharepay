@@ -15,6 +15,8 @@ import { STOCKS, getStock } from "@sharepay/core/tokens";
 import type { Address, Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { loadDotEnv, parseArgs, repoRoot } from "./lib/env.js";
+import { receiptVerifier } from "@sharepay/checkout/services";
+import { exportSeeds, txVerifier, verifySeeds } from "./lib/seeds.js";
 import { approveForSale, describeBalances, merchantAddressFromToml, newBurner, planBuy, verifyFunding, type FundingTarget } from "./lib/wallets.js";
 
 const MIN_BNB_WEI = 500000000000000n;
@@ -132,6 +134,24 @@ const commands: Record<string, () => Promise<boolean>> = {
     ok = ok && result.ok;
     console.log(ok ? "PASS" : "FAIL");
     return ok;
+  },
+  "export-seeds": async () => {
+    const chain = createChainReader({ rpcUrl: process.env.BSC_RPC_URL || undefined });
+    const result = await exportSeeds(
+      { fetchImpl: fetch, verifyReceipt: receiptVerifier(chain), verifyTx: txVerifier(chain) },
+      root,
+      { checkoutUrl: flag("checkout") ?? (process.env.CHECKOUT_URL || "http://localhost:8787"), merchantUrl: flag("merchant") ?? required("MERCHANT_URL") },
+    );
+    console.log(`Seed files now hold ${result.receipts} receipts and ${result.activity} merchant entries.`);
+    for (const entry of result.skipped) console.log(`  skipped (not confirmed on-chain): ${entry}`);
+    return true;
+  },
+  "verify-seeds": async () => {
+    const chain = createChainReader({ rpcUrl: process.env.BSC_RPC_URL || undefined });
+    const result = await verifySeeds({ verifyReceipt: receiptVerifier(chain), verifyTx: txVerifier(chain) }, root);
+    for (const line of result.lines) console.log(line);
+    console.log(result.ok ? "PASS" : "FAIL");
+    return result.ok;
   },
 };
 
