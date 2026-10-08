@@ -1,0 +1,77 @@
+# Render Blueprint (spec §8): two free web services in Singapore. Node comes from .node-version.
+# Secrets are sync: false — Render asks for them in the dashboard (gates G4/G5); no value is ever committed.
+services:
+  - type: web
+    name: sharepay-merchant
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci
+    startCommand: npm run start:merchant
+    healthCheckPath: /ping
+    envVars:
+      - key: BINANCE_API_KEY
+        sync: false
+      - key: BINANCE_API_SECRET
+        sync: false
+      - key: WALLET_KEYSTORE_JSON
+        sync: false
+      - key: WALLET_PASSWORD
+        sync: false
+      - key: MERCHANT_PUBLIC_URL
+        sync: false
+      - key: BSC_RPC_URL
+        value: https://bsc-dataseed.bnbchain.org
+      - key: REPORT_PRICE_ATOMIC
+        value: "50000000000000000"
+      - key: SWEEP_ENABLED
+        value: "true"
+      - key: SWEEP_MIN_ATOMIC
+        value: "50000000000000000"
+      - key: SWEEP_FLOAT_ATOMIC
+        value: "0"
+      - key: SWEEP_MAX_ATOMIC
+        value: "5000000000000000000"
+      - key: SWEEP_MAX_PRICE_IMPACT
+        value: "2"
+      - key: SWEEP_SLIPPAGE
+        value: "1"
+      - key: SWEEP_INTERVAL_MS
+        value: "300000"
+      - key: ACTIVITY_PATH
+        value: data/runtime/merchant-activity.json
+      - key: ACTIVITY_SEED_PATH
+        value: data/merchant-activity.seed.json
+  - type: web
+    name: sharepay-checkout
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build:web
+    startCommand: npm run start:checkout
+    healthCheckPath: /api/health
+    envVars:
+      - key: BINANCE_API_KEY
+        sync: false
+      - key: BINANCE_API_SECRET
+        sync: false
+      - key: BUYER_PRIVATE_KEY
+        sync: false
+      - key: LIVE_PASSCODE
+        sync: false
+      - key: MERCHANT_URL
+        sync: false
+      - key: WALLET_MODE
+        value: api-signer
+      - key: BSC_RPC_URL
+        value: https://bsc-dataseed.bnbchain.org
+      - key: LIVE_DAILY_MAX_COUNT
+        value: "10"
+      - key: LIVE_DAILY_MAX_USD
+        value: "1.50"
+      - key: RECEIPTS_SEED_PATH
+        value: data/receipts.seed.json
+      - key: RECEIPTS_RUNTIME_PATH
+        value: data/runtime/receipts.json
+      - key: WEB_DIST
+        value: packages/web/dist
