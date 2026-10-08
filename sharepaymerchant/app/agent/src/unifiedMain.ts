@@ -93,6 +93,10 @@ import {
 import { generateText, stepCountIs } from "ai";
 import { resolveStorageMode } from "@bnbagent/studio-runtime/storage";
 import express from "express";
+import { createMerchantRuntime } from "@sharepay/merchant/runtime";
+import { mountSharePayMerchant } from "@sharepay/merchant/routes";
+import { sharePayRunWork } from "@sharepay/merchant/runWork";
+import { studioTxSigner } from "@sharepay/merchant/studioSigner";
 import { buildAgentCard } from "./agentCard.js";
 import { SellerAgentExecutor } from "./executor.js";
 import { buildModel } from "./model.js";
@@ -470,7 +474,7 @@ async function main(): Promise<void> {
     ]),
   ];
   const port = ports[0] as number;
-  const runWork = buildRunWork();
+  const runWork = sharePayRunWork(process.env.MERCHANT_PUBLIC_URL ?? "http://localhost:9000");
 
   // The executor backs the seller skills with signing.ts fixed code (NEVER an
   // LLM tool). The SAME executor serves every carrier: @a2a-js JSON-RPC,
@@ -509,6 +513,9 @@ async function main(): Promise<void> {
 
   const app = express();
   app.use(requestLimitContext);
+  // SharePay: deterministic paid x402 report, self-settled by this agent's Studio wallet (sole signer).
+  const sharepay = await createMerchantRuntime({ env: process.env, signer: studioTxSigner(getWallet()) });
+  mountSharePayMerchant(app, sharepay);
 
   // GET /ping status fed to AgentCore: HEALTHY_BUSY while a background
   // delivery is in flight, else HEALTHY.

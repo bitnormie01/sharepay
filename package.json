@@ -9,7 +9,8 @@
     "node": ">=22.12.0"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "sharepaymerchant/app/agent"
   ],
   "scripts": {
     "test": "vitest run",

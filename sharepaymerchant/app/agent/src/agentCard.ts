@@ -54,6 +54,18 @@ const NOTIFY_FUNDED: AgentSkill = {
   outputModes: ["application/json"],
 };
 
+const SHAREPAY_REPORT: AgentSkill = {
+  id: "sharepay_report",
+  name: "Paid research report (x402)",
+  description:
+    "GET /x402/report?symbol=NVDA on this agent's public URL returns HTTP 402 (x402 v2, scheme exact, " +
+    "0.05 U or USD1 via EIP-3009 on eip155:56). Retry with a PAYMENT-SIGNATURE header; the agent verifies " +
+    "and settles transferWithAuthorization itself, then reinvests revenue into SPYB.",
+  tags: ["x402", "tokenized-stocks", "bnb-chain"],
+  inputModes: ["application/json"],
+  outputModes: ["application/json"],
+};
+
 /** Card name from studio.toml `[project].name` (best-effort). */
 function agentName(): string {
   let name = "";
@@ -107,7 +119,7 @@ export function buildAgentCard(
   }
   return {
     name,
-    description: `ERC-8183 seller agent (${name}) — negotiate + notify_funded over A2A.`,
+    description: `SharePay merchant agent (${name}): sells a deterministic NVDA research report over x402 (exact, EIP-3009 U/USD1, self-settled on BSC) and reinvests revenue into SPYB.`,
     // main.ts overwrites this with $AGENTCORE_RUNTIME_URL at boot.
     // Local-dev fallback: a client-routable localhost URL (not the 0.0.0.0
     // bind address). Host via AGENT_HOST (default localhost); port via the
@@ -129,7 +141,7 @@ export function buildAgentCard(
     defaultInputModes: ["application/json"],
     defaultOutputModes: ["application/json"],
     skills:
-      opts.commerceSkills === false ? [] : [NEGOTIATE, NOTIFY_FUNDED],
+      opts.commerceSkills === false ? [SHAREPAY_REPORT] : [SHAREPAY_REPORT, NEGOTIATE, NOTIFY_FUNDED],
     ...extra,
   };
 }

@@ -9,11 +9,14 @@
   },
   "scripts": {
     "dev": "tsx src/unifiedMain.ts",
+    "start": "tsx src/unifiedMain.ts",
+    "start:local": "tsx --env-file-if-exists=../../.studio/.env.local --env-file-if-exists=../../../.env src/unifiedMain.ts",
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@bnbagent/studio-runtime": "0.0.14",
     "@bnbagent/sdk": "0.6.0",
+    "@sharepay/merchant": "*",
     "zod": "^3.25.0",
     "@aws-sdk/client-secrets-manager": "^3.600.0",
     "ai": "^7.0.29",
