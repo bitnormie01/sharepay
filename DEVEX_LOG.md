@@ -38,11 +38,39 @@ One entry per error: page URL, section, what is wrong, what it should say.
 Edge cases, unclear error messages (exact text and endpoint), latency per endpoint, rate limits, signing
 problems, data that did not reconcile (prices, decimals, balances).
 
+**G3 prep, 2026-10-10 17:46 UTC: `GET /api/v1/dex/aggregator/approve-transaction` returns an array.**
+- **What came back:** HTTP 200, code 0, with `data` as a **one-element array**:
+  `[{"data":"0x095ea7b3…","dexContractAddress":"0xB44446b0c8E56988c34f7Ff73Ae904982b5FdDA5","gasLimit":"70000","gasPrice":"55203152"}]`.
+  It is the same with and without `vendor=LiquidMesh`.
+- **What broke:** our client expected a bare object, as in our test fixture. So every approval failed with
+  `schema mismatch: Expected object, received array` before signing. That covered buy, approve, the
+  Simulate dry-run and the merchant's SPYB sweep.
+- **Status:** fixed in `690f418`, which accepts either shape.
+- **Open for the human:** check whether the API reference page shows an object here.
+
 ## AI stack (Agentic Wallet, Agent Studio)
 
 `baw` (Agentic Wallet CLI 1.10.0): sign-in, `market-order swap`, `x402-payment preview/sign`, limits.
 BNB Agent Studio 0.0.14: `bag init`, wallet provisioning, ERC-8004 registration, the Express runtime, the x402
 rail. What worked, what did not, what is missing.
+
+**G2/G3, 2026-10-10 17:43–18:23 UTC: `baw` 1.10.0 (raw notes).**
+- **A half-finished sign-in gives inconsistent errors.**
+  - After a sign-in that didn't complete for this CLI, `baw wallet status --json` → `{"code":2,"name":"SERVICE_ERROR","message":"illegal parameter"}`,
+    and `baw wallet address --json` → `{"code":10003002,"name":"SESSION_EXPIRED","message":"Please log in first."}`.
+  - Minutes later: `status` → `UNCONNECTED`, `address` → `{"code":10003000,"name":"NOT_LOGGED_IN"}`.
+  - A fresh `baw auth signin` fixed it.
+  - `baw auth verify --qrCodeId <id>` exists for the async flow.
+- **Settings after sign-in** (`baw wallet settings --json`): `maxSigninDuration` `48h`, `x402DailyLimit` 20,
+  `dailyLimit` 50000, `abnormalTxnHandling` `AutoReject`.
+- **Preview** (`x402-payment preview`) of our merchant's v2 requirement: both options `ACTION_REQUIRED`
+  with reason `INSUFFICIENT_BALANCE` (the wallet held no U), with no `NOT_SIGNABLE`.
+- **Order ids don't match.** `market-order swap` printed `orderId` `26101000001955689740` for the 2.5 USDT →
+  NVDAB order, but `market-order list --orderId 26101000001955689740 --json` → `total: 0`. The order is
+  listed as `26101000001955689415`. The TSLAB order's printed id (`…689591`) did match. Polling by the
+  printed id can miss a finished order.
+- **Order quantity vs balance:** NVDAB `toTokenActualQty` `0.010844824172183502`, but the on-chain balance
+  afterwards was `0.010836`.
 
 ## Tokenized-stock specifics
 
@@ -63,6 +91,18 @@ minimum order size, on-chain vs reference price, and how bStocks and Ondo differ
   USDT on BSC). The retry with `vendor=LiquidMesh` returned code 0 with a direct AMM route. Latency was
   ~190–200 ms per quote, against 337–677 ms for `GET /api/v1/dex/market/rwa/tokens`
   (`devex/events.jsonl`).
+
+**bStock buys, 2026-10-10 ~18:12 UTC (Saturday); details in `docs/gates/funding.md`:**
+
+| Wallet | Paid | Quoted | Received |
+|---|---|---|---|
+| Demo (api-signer) | 2.50 USDT | ≈0.01083 NVDAB (min 0.01051) | 0.010837 NVDAB |
+| Demo (api-signer) | 0.50 USDT | ≈0.001306 TSLAB (min 0.001267) | 0.001306 TSLAB |
+| Agentic Wallet | 2.5 USDT | — | 0.010844824 NVDAB |
+| Agentic Wallet | 0.5 USDT | — | 0.001306310 TSLAB |
+
+- Every buy went through a 1-leg AMM SWAP route while the US market was closed.
+- At $0.50–$2.50, no slippage beyond the quote was visible.
 
 ## Redesign suggestions
 

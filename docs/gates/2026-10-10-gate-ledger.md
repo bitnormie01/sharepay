@@ -110,7 +110,7 @@ the kit's tier examples:
 | P2 | "Apply as Hacker" registration | C | P1 | fill + submit | pre-answers | 5 min | **not registered** (17:35) |
 | P4 | `baw auth signin` | B | — | scan the QR in the Binance app | status / settings / address | 5 min | **done** ~18:02 (session until 2026-10-12 18:02 UTC) |
 | G2 | Merchant wallet + AW preview of our 402 (ops:8) | B | P1, P4 | (the P4 QR) | keygen, local merchant, preview, verify | 20 min | **done** 18:05 (PASS; `AW_PAYS_OWN_MERCHANT=true`) |
-| G3 | Fund, buy, approve (ops:9) | C | P5, G2 | send ~$10, run buys + approve | balances, dry-runs, poll, record, verify | 45–75 min | pending |
+| G3 | Fund, buy, approve (ops:9) | C | P5, G2 | send ~$10, run buys + approve | balances, dry-runs, poll, record, verify | 45–75 min | **done** 18:23 (PASS); funding hashes pending |
 | P3 | Render account + GitHub access | C | — | sign up, connect the repo | — | 10 min | account exists; repo access unchecked |
 | G4 | Merchant on Render SG + ERC-8004 (ops:10) | C | G1, G2, P3 | Blueprint, secrets, register | smokes, BscScan, record, verify | 30–45 min | pending |
 | G5 | Checkout on Render SG (ops:11) | C | G4, P5 | secrets, deploy, keep-awake monitor | smoke, UI check, record, verify | 30–45 min | pending |
@@ -463,7 +463,16 @@ Sunday morning):
   - A withdrawal on the wrong network can be lost.
   - Tiny trades see slippage and minimums. A weekend route refusal shows up in step 3 before any buy.
 - **Status:** pending.
-- **Evidence:** _funding txs · buy txs · AW order ids · approval txs · verify-funding · commit_
+- **Status:** **done**, 18:23 UTC. You ran steps 1, 4, 5 and 7 (reported "G3 done on here on terminal"
+  at ~18:20 UTC). I read the outputs from the Terminal panel.
+- **Evidence** (all in `docs/gates/funding.md`):
+  - **Demo-wallet txs:** the USDT approval, the NVDAB and TSLAB buys, and the two router approvals. All
+    receipts are `success`.
+  - **AW orders:** `26101000001955689415` (NVDAB, `FINISHED`; the swap command printed `…689740`) and
+    `…689591` (TSLAB, `FINISHED`). Both receipts are `success`.
+  - **Verify:** `npm run ops -- verify-funding` → `PASS`, with all three wallets `OK`.
+  - **Pending:** the five incoming funding tx hashes. BscScan sits behind a Cloudflare bot check in the
+    built-in browser, which I don't solve. The public RPC refuses `eth_getLogs` (`-32005 limit exceeded`).
 
 ## P3 — Render account + GitHub access (preflight)
 
@@ -694,6 +703,7 @@ Sunday morning):
 | 2026-10-10 17:37 | G1 | "renamed the keys, run G1" → G1 executed (names-only re-check, 3 smokes, verify, commit). |
 | 2026-10-10 17:43 | G2, prep G3 | "baw is signed in with wallet, check and run G2, then prepare G3" → G2 steps 1–2 run; the preview is blocked (baw not signed in on this machine). prep G3 run: P5 `new-burner` + read-only dry-runs. |
 | 2026-10-10 ~18:01 | fix, G2, G3 step 1 | "fix approve and I have loaded all 3 wallet (baw is logged in …)" → approve fix applied and verified; G2 finished; read-only balance and dry-run checks for G3. |
+| 2026-10-10 ~18:20 | G3 | "G3 done on here on terminal" → I read the Terminal panel, polled the AW orders, verified receipts, wrote `funding.md`, ran verify-funding and committed. |
 
 ## Account actions
 
@@ -713,3 +723,10 @@ Sunday morning):
 | before 18:01 | G3 step 1 | you → demo `0xB89a…951f` | 3.1 USDT + 0.00081 BNB | _hashes → funding.md_ |
 | before 18:01 | G3 step 1 | you → AW `0x7290…950f` | 3 USDT + 0.00054 BNB | _hashes → funding.md_ |
 | before 18:01 | G3 step 1 | you → merchant `0x8e8B…01B0` | 0.00081 BNB | _hashes → funding.md_ |
+| ~18:12 | G3 step 4 | demo → USDT | approve router `0xB444…FdDA5` | `0xd6645c10159514e89f1a21b546abdf007a2fcc40a31cafc1e693d940b7cd1d43` |
+| ~18:12 | G3 step 4 | demo → router | 2.50 USDT → 0.010837 NVDAB | `0xc0627e0866fb89253a5628457c4553800eb79d90be593ff99fc8783b7678aa58` |
+| ~18:12 | G3 step 4 | demo → router | 0.50 USDT → 0.001306 TSLAB | `0x013418fcc49b64a535eb4b784edc2f97b20b5b92f92367e5b78dff6135f6a047` |
+| ~18:12 | G3 step 5 | AW → executor | 2.5 USDT → 0.010844824 NVDAB (order `…689415`) | `0xcb9a2955dd82873467b5d97125be9e078ce486d64c4e8372cab9bac9172e2a20` |
+| ~18:12 | G3 step 5 | AW → executor | 0.5 USDT → 0.001306310 TSLAB (order `…689591`) | `0x4ca26632ba29e99ce13b14f75c9b92708f37471e489a56389528c7a79612564f` |
+| ~18:13 | G3 step 7 | demo → NVDAB | approve router for sale | `0x57aabe0298d9246d37f37843db50da4e901235c9867dd6ac9ef386b4c8cfde2e` |
+| ~18:13 | G3 step 7 | demo → TSLAB | approve router for sale | `0x122837bf946028abebe7d8c80189efbece324b3cbe6167b4d5df78db37f79f7e` |
