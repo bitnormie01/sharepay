@@ -1,0 +1,13 @@
+{
+  "id": "merchant-live",
+  "at": "2026-10-10T19:04:01.829Z",
+  "ok": true,
+  "summary": "merchant up at https://sharepay-merchant.onrender.com; signed RWA call from its host: code 0",
+  "detail": {
+    "url": "https://sharepay-merchant.onrender.com",
+    "status": 200,
+    "payTo": "0x8e8B22406158c2243BC325b4E3b12b34EeB301B0",
+    "rwaCode": 0,
+    "rwaMessage": "ok"
+  }
+}

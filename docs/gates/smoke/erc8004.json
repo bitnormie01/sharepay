@@ -1,0 +1,13 @@
+{
+  "id": "erc8004",
+  "at": "2026-10-10T19:22:04.520Z",
+  "ok": true,
+  "summary": "agent 370837 on the ERC-8004 IdentityRegistry is owned by the merchant wallet 0x8e8B22406158c2243BC325b4E3b12b34EeB301B0",
+  "detail": {
+    "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    "agentId": "370837",
+    "owner": "0x8e8B22406158c2243BC325b4E3b12b34EeB301B0",
+    "merchantWallet": "0x8e8B22406158c2243BC325b4E3b12b34EeB301B0",
+    "url": "https://sharepay-merchant.onrender.com"
+  }
+}

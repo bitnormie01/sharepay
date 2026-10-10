@@ -75,3 +75,11 @@ acknowledged_at = "2026-10-08T07:15:39Z"
 max_per_topup_usd = 1.0
 max_per_day_usd = 3.0
 max_per_month_usd = 15.0
+
+[identity]
+# Written by hand with bag's own confirmed-register fields (identityWriteback): the relay tx confirmed in
+# block 126881993 after `bag erc8004 register` stopped waiting; `bag erc8004 show` reports agent_id 370837.
+endpoint = "https://sharepay-merchant.onrender.com"
+registered_at = "2026-10-10T19:15:09.000Z"
+agent_id = 370837
+last_register_tx = "0x9db4d9c5ca745e9463301d2fbb99b9bf0c4cd866dfc9ffc49a16dff8e8a4910d"

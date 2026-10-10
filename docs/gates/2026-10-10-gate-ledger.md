@@ -112,7 +112,7 @@ the kit's tier examples:
 | G2 | Merchant wallet + AW preview of our 402 (ops:8) | B | P1, P4 | (the P4 QR) | keygen, local merchant, preview, verify | 20 min | **done** 18:05 (PASS; `AW_PAYS_OWN_MERCHANT=true`) |
 | G3 | Fund, buy, approve (ops:9) | C | P5, G2 | send ~$10, run buys + approve | balances, dry-runs, poll, record, verify | 45–75 min | **done** 18:23 (PASS); funding hashes pending |
 | P3 | Render account + GitHub access | C | — | sign up, connect the repo | — | 10 min | account exists; repo access unchecked |
-| G4 | Merchant on Render SG + ERC-8004 (ops:10) | C | G1, G2, P3 | Blueprint, secrets, register | smokes, BscScan, record, verify | 30–45 min | pending |
+| G4 | Merchant on Render SG + ERC-8004 (ops:10) | C | G1, G2, P3 | Blueprint, secrets, register | smokes, BscScan, record, verify | 30–45 min | **done** 19:23 (PASS; agent 370837) |
 | G5 | Checkout on Render SG (ops:11) | C | G4, P5 | secrets, deploy, keep-awake monitor | smoke, UI check, record, verify | 30–45 min | pending |
 | G6 | Live rehearsal + recorded-run seeds (ops:12) | C | G2–G5 | live payments + passcode | export, summary, verify seeds | 60–90 min | pending |
 | DX | Developer Experience Report | C | G1–G6 (material) | write + submit (human-only) | facts sheet / measured summary on ask | 60–90 min | pending |
@@ -527,8 +527,51 @@ Sunday morning):
     code change, so I'd propose it, not make it.
   - A failed build (e.g. missing devDependencies) is class code. I'd bring you a proposed fix.
   - The keystore and password in Render env are readable by anyone with dashboard access.
-- **Status:** pending.
-- **Evidence:** _merchant URL · merchant-live · agent id · registration tx · erc8004 · verify · commit_
+- **Status:** in progress. You applied the Blueprint (Render sync of `6437aa0`, ~18:42 UTC).
+  - **Merchant:** `sharepay-merchant` was created and is live at **https://sharepay-merchant.onrender.com**.
+    - `/ping` → `200 {"status":"HEALTHY"}`.
+    - `/sharepay/health` → `payTo` `0x8e8B…01B0`, `eip155:56`, $0.05, sweep on.
+  - **Checkout:** `sharepay-checkout` → "Failed deploy". This is expected: `BUYER_PRIVATE_KEY` and
+    `MERCHANT_URL` are still blank, and `packages/checkout/src/config.ts:67` and `:70` throw at boot. The
+    build very likely passed, since the merchant boots through the devDependency `tsx`. It gets fixed in G5.
+  - **Found 18:56 UTC, class env:** the deployed 402 says `resource.url: null/x402/report?symbol=NVDA`.
+    `MERCHANT_PUBLIC_URL` on Render is the literal `null` (`routes.ts:42` builds it from the variable).
+    Fix (yours): set it to `https://sharepay-merchant.onrender.com` and save, which redeploys. Then the
+    smokes and registration follow.
+- **19:03 UTC:** you fixed `MERCHANT_PUBLIC_URL`. The 402 now reads
+  `resource.url: https://sharepay-merchant.onrender.com/x402/report?symbol=NVDA`.
+- **19:04 UTC:** `MERCHANT_URL=https://sharepay-merchant.onrender.com npm run smoke -- merchant-live` →
+  `OK — merchant up at https://sharepay-merchant.onrender.com; signed RWA call from its host: code 0`.
+  Render Singapore is not region-blocked, so no tunnel fallback is needed.
+- **Agent card (class env, yours):** `/.well-known/agent-card.json` reports `"url":"http://localhost:9000/"`.
+  - `agentCard.ts:128–130` uses `AGENTCORE_RUNTIME_URL` and otherwise falls back to localhost.
+  - Fix: in Render, set `sharepay-merchant` → `AGENTCORE_RUNTIME_URL=https://sharepay-merchant.onrender.com/`.
+  - It is not a code change, and it doesn't block registration (the registry stores the endpoint).
+- **19:04 UTC, registration refused by `bag`'s gas pre-check; nothing was broadcast:**
+  `error: ERC-8004 register needs gas to broadcast, but 0x8e8B…01B0 holds only 0.00081 BNB on bsc-mainnet (need ~0.002). Fund a little tBNB and retry — get tBNB via Telegram …`.
+  - Class env/funding.
+  - Fix (yours): send ~0.0015 BNB to the merchant `0x8e8B22406158c2243BC325b4E3b12b34EeB301B0`.
+  - DX note: the mainnet error advises a testnet tBNB faucet.
+- **~19:13 UTC:** you sent BNB to the merchant and set `AGENTCORE_RUNTIME_URL` ("go, sent BNB and set the
+  card URL"). The merchant's balance read 0.00231 BNB at 19:14 UTC.
+- **19:14 UTC, registration (concierge, on your G4 approval):**
+  `npx bag erc8004 register --endpoint https://sharepay-merchant.onrender.com --name "SharePay Merchant" --description "…"`.
+  - It went out through the MegaFuel relay. After ~5 min `bag` reported
+    `pending: tx_hash=0x9db4d9c5…a4910d broadcast but not confirmed yet`.
+  - **No retry.** The RPC showed the tx mined in block 126881993 (19:15:09 UTC) with status `0x1`, gas
+    price 0 (sponsored), merchant nonce 0 → 1, BNB unchanged.
+  - The receipt shows an ERC-721 mint from `0x0` to `0x8e8B…01B0`, tokenId **370837**.
+    `bag erc8004 show` → `agent_id: 370837`.
+- **`studio.toml`:** `bag` left a stale `pending_*` `[identity]` block. I replaced it by hand with the
+  fields `bag` itself writes after a confirmed register (`identityWriteback`: `endpoint`, `registered_at`,
+  `agent_id`, `last_register_tx`). `bag erc8004 show` still parses it.
+- **19:22 UTC:** `MERCHANT_URL=… MERCHANT_AGENT_ID=370837 npm run smoke -- erc8004` →
+  `OK — agent 370837 on the ERC-8004 IdentityRegistry is owned by the merchant wallet 0x8e8B…01B0`.
+  The agent card's `url` is now `https://sharepay-merchant.onrender.com/`.
+- **Gate:** `npm run smoke -- verify merchant-live erc8004` → `PASS`.
+- **Status:** **done**, 19:23 UTC.
+- **Evidence:** merchant URL ✓ · merchant-live ✓ · agent id 370837 ✓ · registration tx `0x9db4d9c5…a4910d`
+  ✓ · erc8004 ✓ · verify PASS ✓ · commit `chore(gates): G4 …`
 
 ## G5 — deploy the checkout (Render Singapore) (ops:11, category deploy)
 
@@ -704,6 +747,8 @@ Sunday morning):
 | 2026-10-10 17:43 | G2, prep G3 | "baw is signed in with wallet, check and run G2, then prepare G3" → G2 steps 1–2 run; the preview is blocked (baw not signed in on this machine). prep G3 run: P5 `new-burner` + read-only dry-runs. |
 | 2026-10-10 ~18:01 | fix, G2, G3 step 1 | "fix approve and I have loaded all 3 wallet (baw is logged in …)" → approve fix applied and verified; G2 finished; read-only balance and dry-run checks for G3. |
 | 2026-10-10 ~18:20 | G3 | "G3 done on here on terminal" → I read the Terminal panel, polled the AW orders, verified receipts, wrote `funding.md`, ran verify-funding and committed. |
+| 2026-10-10 ~19:02 | G4 | "run G4. run commands yourself autonomously (I approve you to do so)" → the concierge runs G4's commands itself, including `npx bag erc8004 register`: one mainnet identity tx from the merchant key, moving no funds. Scope: **G4 only.** It does not extend to entering keys or secrets into dashboards, or to any trade or live payment. |
+| 2026-10-10 ~19:13 | G4 | "go, sent BNB and set the card URL" → registration run, confirmed on-chain, gate verified, committed. |
 
 ## Account actions
 
@@ -715,6 +760,9 @@ Sunday morning):
 | 17:44 | concierge | merchant Studio wallet | `npx bag wallet new --generate-password` → `0x8e8B22406158c2243BC325b4E3b12b34EeB301B0` (keystore + password in git-ignored `.studio/`) |
 | 17:46 | concierge | demo wallet | `npm run ops -- new-burner` → `0xB89a65d5b5bf0e99E8A3ff74398470e4E153951f` (key written to `.env` by the script; never printed) |
 | ~18:02 | you | Binance Agentic Wallet | `baw auth signin` completed (48 h session) |
+| ~18:42 | you | Render | Blueprint `exs-db58dcl9fdbs73bvfbcg` from `bitnormie01/sharepay` (`main`). It created `sharepay-merchant` (live) and `sharepay-checkout` (failed deploy, expected until G5); merchant secrets entered by you |
+| ~19:00 | you | Render | `sharepay-merchant`: `MERCHANT_PUBLIC_URL` fixed (was `null`) |
+| ~19:12 | you | Render | `sharepay-merchant`: added `AGENTCORE_RUNTIME_URL=https://sharepay-merchant.onrender.com/` |
 
 ## Transactions (BSC mainnet)
 
@@ -730,3 +778,5 @@ Sunday morning):
 | ~18:12 | G3 step 5 | AW → executor | 0.5 USDT → 0.001306310 TSLAB (order `…689591`) | `0x4ca26632ba29e99ce13b14f75c9b92708f37471e489a56389528c7a79612564f` |
 | ~18:13 | G3 step 7 | demo → NVDAB | approve router for sale | `0x57aabe0298d9246d37f37843db50da4e901235c9867dd6ac9ef386b4c8cfde2e` |
 | ~18:13 | G3 step 7 | demo → TSLAB | approve router for sale | `0x122837bf946028abebe7d8c80189efbece324b3cbe6167b4d5df78db37f79f7e` |
+| ~19:10 | G4 | you → merchant `0x8e8B…01B0` | ~0.0015 BNB top-up for `bag`'s gas pre-check (balance 0.00231) | _hash → funding.md_ |
+| 19:15:09 | G4 | merchant → IdentityRegistry `0x8004A169…a432` | ERC-8004 register, agent 370837 (concierge, approved; gas sponsored) | `0x9db4d9c5ca745e9463301d2fbb99b9bf0c4cd866dfc9ffc49a16dff8e8a4910d` |
