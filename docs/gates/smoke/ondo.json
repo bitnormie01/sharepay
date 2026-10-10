@@ -1,0 +1,29 @@
+{
+  "id": "ondo",
+  "at": "2026-10-10T17:38:47.586Z",
+  "ok": true,
+  "summary": "NVDAon $0.05: SWAP route (1 leg); $10: SWAP route (1 leg)",
+  "detail": {
+    "tokenPrice": "231.547283371145865799878663109974",
+    "status": {
+      "openState": true,
+      "marketStatus": "offhours",
+      "reasonCode": "TRADING",
+      "reasonMsg": null,
+      "nextOpenTime": 1791763500000,
+      "nextCloseTime": 1791762900000
+    },
+    "usd_0.05": {
+      "kind": "swap",
+      "legs": 1,
+      "vendor": "LiquidMesh",
+      "expectedOut": "51304673963954388"
+    },
+    "usd_10": {
+      "kind": "swap",
+      "legs": 1,
+      "vendor": "LiquidMesh",
+      "expectedOut": "10262727730603335985"
+    }
+  }
+}

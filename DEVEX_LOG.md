@@ -20,6 +20,9 @@ One row per check, copied from `npm run smoke -- <check>` (the full record is in
 
 | Check | When (UTC) | Where it ran | Result |
 |---|---|---|---|
+| rwa | 2026-10-10 17:38:18 | this PC (India) | OK — code 0: 488 RWA tokens (488 on BSC) |
+| third-party | 2026-10-10 17:38:27 | this PC (India) | OK — BNB Chain stock analyst (Agent Studio) $0.10 in U; CoinMarketCap $0.01 in U |
+| ondo | 2026-10-10 17:38:48 | this PC (India) | OK — NVDAon $0.05: SWAP route (1 leg); $10: SWAP route (1 leg) |
 
 ## Onboarding
 
@@ -45,6 +48,21 @@ rail. What worked, what did not, what is missing.
 
 Liquidity and slippage at our trade sizes, behaviour outside market hours (SWAP vs RFQ, `statusInfo`), Ondo
 minimum order size, on-chain vs reference price, and how bStocks and Ondo differ for the same ticker.
+
+**Ondo smoke, 2026-10-10 17:38 UTC (Saturday, US market closed); copied from `docs/gates/smoke/ondo.json`:**
+- **Status:** RWA `tokens` for NVDAon reported `tokenPrice` `231.547283371145865799878663109974`, plus:
+  - `statusInfo`: `openState: true`, `marketStatus: "offhours"`, `reasonCode: "TRADING"`,
+    `reasonMsg: null`.
+  - `nextCloseTime` `1791762900000` (2026-10-11 23:55 UTC) and `nextOpenTime` `1791763500000`
+    (2026-10-12 00:05 UTC).
+- **No minimum refusal:** Ondo did **not** refuse the small order (no `40375`). NVDAon → U had a SWAP route
+  at both $0.05 (expected out `51304673963954388`) and $10 (`10262727730603335985`), each 1 leg via
+  `LiquidMesh`.
+- **Pair refusal inside an HTTP 200:** every first quote, `GET /api/v1/dex/aggregator/quote` with no
+  `vendor`, came back HTTP 200 with code `40368` (`ONDO_STABLECOIN_PAIR_INVALID`: Ondo pairs only with
+  USDT on BSC). The retry with `vendor=LiquidMesh` returned code 0 with a direct AMM route. Latency was
+  ~190–200 ms per quote, against 337–677 ms for `GET /api/v1/dex/market/rwa/tokens`
+  (`devex/events.jsonl`).
 
 ## Redesign suggestions
 

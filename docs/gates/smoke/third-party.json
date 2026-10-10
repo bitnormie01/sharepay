@@ -1,0 +1,22 @@
+{
+  "id": "third-party",
+  "at": "2026-10-10T17:38:27.010Z",
+  "ok": true,
+  "summary": "BNB Chain stock analyst (Agent Studio) $0.10 in U; CoinMarketCap $0.01 in U",
+  "detail": {
+    "bnb-stock-analyst-nvda": {
+      "amount": "100000000000000000",
+      "asset": "U",
+      "payTo": "0xd10bddc20e4dc42a1a19a9653e994991e25b8153",
+      "maxTimeoutSeconds": 600,
+      "method": "eip3009"
+    },
+    "cmc-nvda-dossier": {
+      "amount": "10000000000000000",
+      "asset": "U",
+      "payTo": "0x3C5f3a6cE224BB89D72f5EB4232ecC27F67B3eeA",
+      "maxTimeoutSeconds": 500,
+      "method": "eip3009"
+    }
+  }
+}

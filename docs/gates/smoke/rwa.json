@@ -1,0 +1,10 @@
+{
+  "id": "rwa",
+  "at": "2026-10-10T17:38:17.998Z",
+  "ok": true,
+  "summary": "code 0: 488 RWA tokens (488 on BSC)",
+  "detail": {
+    "tokens": 488,
+    "onBsc": 488
+  }
+}

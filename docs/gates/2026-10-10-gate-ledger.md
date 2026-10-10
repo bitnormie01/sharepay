@@ -62,6 +62,9 @@ the kit's tier examples:
    - It is checked read-only before any money moves: G1's `ondo` smoke covers Ondo, and the `prep G3`
      route check covers NVDAB and TSLAB.
    - If there is no route, stop and re-plan before funding.
+   - **Update, 17:38 UTC (G1):** Ondo is OK on the weekend. NVDAon has 1-leg LiquidMesh AMM SWAP routes at
+     $0.05 and $10, with status `offhours`, `openState: true`. bStocks (NVDAB, TSLAB, SPYB) remain
+     unchecked until `prep G3`.
 2. **Render's disk is ephemeral.** A redeploy, restart or 15-minute idle spin-down wipes `data/runtime/*`
    (receipts, merchant activity).
    - G6 exports must run right after the live payments.
@@ -79,8 +82,8 @@ the kit's tier examples:
 
 | # | Gate | Tier | Needs first | Your part | My part | Est. | Status |
 |---|---|---|---|---|---|---|---|
-| P1 | Binance Web3 API key → `.env` | C | — | create the key, put it in `.env` | G1's signed call is the test | 10 min | **rename needed** (17:35) |
-| G1 | Day-1 smoke (ops:7) | A | P1 | — | 3 smokes, record, verify, commit | 10 min | pending |
+| P1 | Binance Web3 API key → `.env` | C | — | create the key, put it in `.env` | G1's signed call is the test | 10 min | **done** 17:37 (renamed; G1 `rwa` code 0) |
+| G1 | Day-1 smoke (ops:7) | A | P1 | — | 3 smokes, record, verify, commit | 10 min | **done** 17:40 (PASS) |
 | P5 | Demo wallet key + weekend route check (`prep G3`) | A | P1 | — (or run it yourself) | `new-burner`, read-only dry-run quotes | 5 min | pending |
 | P2 | "Apply as Hacker" registration | C | P1 | fill + submit | pre-answers | 5 min | **not registered** (17:35) |
 | P4 | `baw auth signin` | B | — | scan the QR in the Binance app | status / settings / address | 5 min | UNCONNECTED |
@@ -183,7 +186,10 @@ Sunday morning):
     `packages/merchant/src/runtime.ts`).
   - **Fix (yours):** rename `API_KEY` → `BINANCE_API_KEY` and `SECRET_KEY` → `BINANCE_API_SECRET`, and
     add `DEVEX_EVENTS_PATH=devex/events.jsonl`. Then I re-run the names-only check.
-- **Evidence:** _names-only check after the rename · G1 `rwa` record_
+- **Evidence:**
+  - 17:37:51 UTC, names-only re-check: `BINANCE_API_KEY` set, `BINANCE_API_SECRET` set,
+    `DEVEX_EVENTS_PATH` set. The remaining extra names (`KEY_NAME`, `B402_Payments`) are unused.
+  - G1 `rwa` → code 0. **Done.**
 
 ## G1 — day-1 smoke from this PC (ops:7, category secret)
 
@@ -218,8 +224,23 @@ Sunday morning):
   - A 3xx or 404 on the signed call would match today's keyless probe. I'd classify it (base URL/path vs
     auth headers) and bring you a proposed fix.
   - A third-party merchant being down is env/flake. I classify it and don't re-run blindly.
-- **Status:** pending (blocked on P1).
-- **Evidence:** _rwa: … · third-party: … · ondo: … · verify: … · commit: …_
+- **Status:** **done**, 2026-10-10 17:40 UTC. You consented with "run G1" at 17:37 UTC.
+- **Evidence:**
+  - `rwa` at 17:38:18 UTC: `OK — code 0: 488 RWA tokens (488 on BSC)`. No `40304`: this PC's network is
+    not region-blocked.
+  - `third-party` at 17:38:27 UTC: `OK — BNB Chain stock analyst (Agent Studio) $0.10 in U; CoinMarketCap $0.01 in U`.
+    - Stock analyst: `payTo` `0xd10bddc20e4dc42a1a19a9653e994991e25b8153`, timeout 600 s.
+    - CoinMarketCap: `payTo` `0x3C5f3a6cE224BB89D72f5EB4232ecC27F67B3eeA`, timeout 500 s.
+    - Both use `eip3009`.
+  - `ondo` at 17:38:48 UTC: `OK — NVDAon $0.05: SWAP route (1 leg); $10: SWAP route (1 leg)`.
+    - Route vendor: LiquidMesh. No `40375` minimum.
+    - Status: `offhours`, `openState: true`, `reasonCode: TRADING`.
+    - The no-vendor quote returns `40368` `ONDO_STABLECOIN_PAIR_INVALID` inside HTTP 200; the LiquidMesh
+      retry succeeds.
+  - Verify: `npm run smoke -- verify rwa third-party ondo` → `PASS` (exit 0).
+  - Recorded in: the `DEVEX_LOG.md` smoke table and Ondo notes; tollgate row 19 → PASS, plus the
+    session-card stamps on rows 5, 15 and S7.
+  - Commit: see the git log, `chore(gates): G1 …`.
 
 ## P5 — demo wallet key + weekend route check (`prep G3`)
 
@@ -582,6 +603,7 @@ Sunday morning):
 |---|---|---|
 | 2026-10-10 15:05 | campaign | Kickoff (`KICKOFF_GATES.md`). Granted: built-in browser / Claude in Chrome for reading pages, Render/BscScan checks and form review; PowerShell + Bash in the repo; read-only verify commands against mainnet RPC and the Binance Web3 API. **Not granted:** main wallet, seed phrases, payment details, KYC. No gate consented yet. |
 | 2026-10-10 17:35 | P1 | "check .env is available with api keys setup": a names-only check, run once. Result is in P1. No gate run. |
+| 2026-10-10 17:37 | G1 | "renamed the keys, run G1" → G1 executed (names-only re-check, 3 smokes, verify, commit). |
 
 ## Account actions
 
@@ -589,6 +611,7 @@ Sunday morning):
 |---|---|---|---|
 | before 15:01 | you | Binance Web3 Developer Portal | API key + secret issued and put in `.env` (under `API_KEY` / `SECRET_KEY`) |
 | before 17:35 | you | Render | Account exists (reported by you) |
+| ~17:36 | you | local `.env` | Renamed `API_KEY` → `BINANCE_API_KEY` and `SECRET_KEY` → `BINANCE_API_SECRET`; added `DEVEX_EVENTS_PATH` |
 
 ## Transactions (BSC mainnet)
 
