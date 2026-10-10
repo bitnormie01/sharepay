@@ -1,0 +1,27 @@
+{
+  "id": "aw-preview",
+  "at": "2026-10-10T18:03:12.294Z",
+  "ok": true,
+  "summary": "ACTION_REQUIRED (INSUFFICIENT_BALANCE) → AW_PAYS_OWN_MERCHANT=true",
+  "detail": {
+    "awPaysOwnMerchant": true,
+    "merchantUrl": "http://localhost:9000",
+    "payTo": "0x8e8B22406158c2243BC325b4E3b12b34EeB301B0",
+    "options": [
+      {
+        "index": 1,
+        "status": "ACTION_REQUIRED",
+        "reasons": [
+          "INSUFFICIENT_BALANCE"
+        ]
+      },
+      {
+        "index": 2,
+        "status": "ACTION_REQUIRED",
+        "reasons": [
+          "INSUFFICIENT_BALANCE"
+        ]
+      }
+    ]
+  }
+}

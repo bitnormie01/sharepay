@@ -65,6 +65,28 @@ the kit's tier examples:
    - **Update, 17:38 UTC (G1):** Ondo is OK on the weekend. NVDAon has 1-leg LiquidMesh AMM SWAP routes at
      $0.05 and $10, with status `offhours`, `openState: true`. bStocks (NVDAB, TSLAB, SPYB) remain
      unchecked until `prep G3`.
+   - **Update, 17:47 UTC (prep G3):** bStocks quote on the weekend too.
+     - `Buying ≈0.01083 NVDAB with 2.50 USDT (1 leg, minimum 0.01051)`
+     - `Buying ≈0.001305 TSLAB with 0.50 USDT (1 leg, minimum 0.001266)`
+     - SPYB is still unchecked; it is first quoted by G6's sweep.
+5. **Code bug found (prep G3, 17:46 UTC): `approve-transaction` schema mismatch.** It blocks G3, G5's
+   Simulate check, G6 and the SPYB sweep.
+   - `GET /api/v1/dex/aggregator/approve-transaction` answers HTTP 200, code 0, with a **one-element
+     array**: `[{ data, dexContractAddress: 0xB44446…FdDA5, gasLimit: "70000", gasPrice }]`.
+   - `ApproveTxSchema` in `packages/core/src/binance/trading.ts` expects a bare object, and the test
+     fixture in `packages/core/test/trading.test.ts:80` is an object too. So every approval throws
+     `schema mismatch: Expected object, received array` before anything is signed.
+   - Callers: `buyer/src/wallets/apiSigner.ts:43` (sale/buy), `buyer/src/wallets/simulate.ts:31`
+     (dry-run, Simulate), `merchant/src/sweeper.ts:57` (SPYB reinvest), `scripts/lib/wallets.ts`
+     (`ops approve`).
+   - Proposed fix: accept either the object or a non-empty array (first item). It is under G3 below and
+     awaits your go. No silent patch.
+   - **Fixed, 18:04 UTC** (you said "fix approve" at ~18:01 UTC).
+     - `ApproveTxSchema` is now `z.union([object, nonempty array → first item])`. Two tests were added
+       (the live array fixture, and an empty-array rejection).
+     - `npm run check` → tsc clean, 44 files / **309** tests pass. `tsc -p packages/web` → clean.
+     - Live re-check: both dry-runs → `Dry-run (approve_only): simulation OK`.
+     - Commit: `fix(core): accept the live one-element array from approve-transaction`.
 2. **Render's disk is ephemeral.** A redeploy, restart or 15-minute idle spin-down wipes `data/runtime/*`
    (receipts, merchant activity).
    - G6 exports must run right after the live payments.
@@ -84,10 +106,10 @@ the kit's tier examples:
 |---|---|---|---|---|---|---|---|
 | P1 | Binance Web3 API key → `.env` | C | — | create the key, put it in `.env` | G1's signed call is the test | 10 min | **done** 17:37 (renamed; G1 `rwa` code 0) |
 | G1 | Day-1 smoke (ops:7) | A | P1 | — | 3 smokes, record, verify, commit | 10 min | **done** 17:40 (PASS) |
-| P5 | Demo wallet key + weekend route check (`prep G3`) | A | P1 | — (or run it yourself) | `new-burner`, read-only dry-run quotes | 5 min | pending |
+| P5 | Demo wallet key + weekend route check (`prep G3`) | A | P1 | — (or run it yourself) | `new-burner`, read-only dry-run quotes | 5 min | **done** 17:47 (routes OK; approve bug found) |
 | P2 | "Apply as Hacker" registration | C | P1 | fill + submit | pre-answers | 5 min | **not registered** (17:35) |
-| P4 | `baw auth signin` | B | — | scan the QR in the Binance app | status / settings / address | 5 min | UNCONNECTED |
-| G2 | Merchant wallet + AW preview of our 402 (ops:8) | B | P1, P4 | (the P4 QR) | keygen, local merchant, preview, verify | 20 min | pending |
+| P4 | `baw auth signin` | B | — | scan the QR in the Binance app | status / settings / address | 5 min | **done** ~18:02 (session until 2026-10-12 18:02 UTC) |
+| G2 | Merchant wallet + AW preview of our 402 (ops:8) | B | P1, P4 | (the P4 QR) | keygen, local merchant, preview, verify | 20 min | **done** 18:05 (PASS; `AW_PAYS_OWN_MERCHANT=true`) |
 | G3 | Fund, buy, approve (ops:9) | C | P5, G2 | send ~$10, run buys + approve | balances, dry-runs, poll, record, verify | 45–75 min | pending |
 | P3 | Render account + GitHub access | C | — | sign up, connect the repo | — | 10 min | account exists; repo access unchecked |
 | G4 | Merchant on Render SG + ERC-8004 (ops:10) | C | G1, G2, P3 | Blueprint, secrets, register | smokes, BscScan, record, verify | 30–45 min | pending |
@@ -266,8 +288,13 @@ Sunday morning):
   - This wallet will hold ~$4 of real funds. Its key exists only in `.env`, and in Render's env after G5.
   - Close `.env` in your editor before I run it: the script rewrites the file, and an unsaved buffer could
     clobber the new line.
-- **Status:** pending.
-- **Evidence:** _demo wallet address · route-check lines_
+- **Status:** **done**, 17:47 UTC (you said "prepare G3" at 17:43 UTC).
+- **Evidence:**
+  - `Demo wallet created: 0xB89a65d5b5bf0e99E8A3ff74398470e4E153951f (private key written to .env, never printed)`.
+    The names-only re-check shows `BUYER_PRIVATE_KEY` set and the API keys intact.
+  - Route check: NVDAB and TSLAB both quote 1-leg SWAP routes on a Saturday (lines in risk 1).
+  - Both simulations stop at the `approve-transaction` schema mismatch (risk 5): class **code bug**, not
+    the wallet being empty.
 
 ## P2 — "Apply as Hacker" registration (preflight)
 
@@ -300,8 +327,21 @@ Sunday morning):
 - **Risk:** the session lasts ~48 h. A sign-in around 16:00 UTC covers G2–G6 and Sunday's recording, but
   the spec says to re-sign in right before recording. AW limits are set only in the Binance app; the
   sample x402 daily limit is $20.
-- **Status:** pending; probed `UNCONNECTED` at ~15:10 UTC.
-- **Evidence:** _status · maxSigninDuration · AW address_
+- **Status:** **not signed in.**
+  - Probed `UNCONNECTED` at ~15:10 UTC.
+  - At 17:43 UTC you reported you were signed in, but this machine's `baw` answered `wallet status` →
+    `SERVICE_ERROR "illegal parameter"` and `wallet address` → `SESSION_EXPIRED "Please log in first."`.
+  - At 17:46 UTC: `status` → `UNCONNECTED`, `address` → `NOT_LOGGED_IN`.
+  - Class human/env: the sign-in did not complete for this CLI. Redo `baw auth signin` here. If it returns
+    a `qrCodeId` before the scan finishes, run `baw auth verify --qrCodeId <id>`.
+- **Update, ~18:02 UTC: signed in** (you redid the sign-in).
+  - `baw wallet status --json` → `CONNECTED`.
+  - AW BSC address: **`0x72905bF92D6a74414deC2236C5b76e8E7372950f`**.
+  - `baw wallet settings --json`: `maxSigninDuration` `48h`, `sessionExpireTime` `2026-10-12T23:32:29+05:30`
+    (18:02 UTC Oct 12), `signInMaxTime` 2026-10-17, `x402DailyLimit` 20 (0 used), `dailyLimit` 50000,
+    `abnormalTxnHandling` `AutoReject`.
+  - The session covers G3, G6 and Sunday's recording.
+- **Evidence:** CONNECTED · 48h · `0x7290…950f` ✓
 
 ## G2 — merchant Studio wallet + Agentic Wallet preview of our 402 (ops:8, category wallet)
 
@@ -335,8 +375,34 @@ Sunday morning):
     `sharepaymerchant/.studio/` (`.gitignore` line verified).
   - `NOT_SIGNABLE` / `BLOCKED_BY_SECURITY_CHECK` gives `AW_PAYS_OWN_MERCHANT=false`. That's the designed
     fallback, not a failure: the demo wallet pays our merchant, and the AW pays both third parties.
-- **Status:** pending.
-- **Evidence:** _merchant address · 402 header seen · preview summary · verify · commit_
+- **Status:** in progress (you said "run G2" at 17:43 UTC).
+  - Step 1 done, 17:44 UTC: the merchant wallet is **`0x8e8B22406158c2243BC325b4E3b12b34EeB301B0`**.
+    - The keystore is `sharepaymerchant/.studio/wallets/0x8e8B…01B0.json`; the password is in
+      `sharepaymerchant/.studio/.env.local`.
+    - Both are git-ignored (`sharepaymerchant/.gitignore:5`).
+    - The `studio.toml` diff is a single `address = "0x8e8B…01B0"` line.
+  - Step 2 done, 17:45 UTC:
+    - The first start failed with `MERCHANT_PUBLIC_URL is required`: class env, because `.env` holds only
+      the keys.
+    - The restart passed `MERCHANT_PUBLIC_URL=http://localhost:9000 SWEEP_ENABLED=false` inline. With
+      sweeping off, this local copy never sweeps with the new key.
+    - `GET /x402/report?symbol=NVDA` → `402 Payment Required` with `PAYMENT-REQUIRED`: x402 v2, `exact`
+      on `eip155:56`, amount `50000000000000000` in U (`0xce24…6666`) or USD1 (`0x8d0d…0b0d`),
+      `payTo` `0x8e8B…01B0`, timeout 300 s.
+  - Steps 3–4 done, 18:03 UTC (after P4). `MERCHANT_URL=http://localhost:9000 BAW_BIN=<…\dist\index.js> npm run smoke -- aw-preview`
+    → `OK — ACTION_REQUIRED (INSUFFICIENT_BALANCE) → AW_PAYS_OWN_MERCHANT=true`.
+    - Both options (U, USD1) are `ACTION_REQUIRED` / `INSUFFICIENT_BALANCE`: the AW holds no U yet, and
+      the checkout sells shares into U first. Neither is `NOT_SIGNABLE`, so the AW can pay our merchant on
+      camera.
+  - Gate: `npm run smoke -- verify aw-preview` → `PASS`.
+  - The local merchant was stopped; its leftover `node` child, PID 22668, was verified as `unifiedMain.ts`
+    and stopped. Port 9000 is free.
+  - **Yours for G6:** add `AW_PAYS_OWN_MERCHANT=true` and
+    `BAW_BIN=C:\Users\victu\AppData\Roaming\npm\node_modules\@binance\agentic-wallet\dist\index.js` to
+    `.env`, or I pass them inline when G6 starts the local checkout.
+- **Status:** **done**, 18:05 UTC.
+- **Evidence:** merchant address ✓ · 402 header ✓ · preview `AW_PAYS_OWN_MERCHANT=true` ✓ · verify PASS ✓ ·
+  commit `chore(gates): G2 …`
 
 ## G3 — buy the demo shares and approve the router (ops:9, category wallet)
 
@@ -370,6 +436,28 @@ Sunday morning):
       Message: `chore(gates): G3 demo shares bought and approved, funding recorded`. Push.
 - **Tip:** run steps 4, 5 and 7 in the Code tab's **Terminal panel**, so I can read the outputs (tx hashes,
   order ids) directly. I never run them.
+- **Blocked by the approve bug (risk 5) until the fix lands.** Steps 3, 4 and 7 all call
+  `approve-transaction`. The AW buys (step 5) go through `baw` and don't use our code path.
+- **Proposed fix**, in `packages/core/src/binance/trading.ts` (+ one test):
+  - Change: rename the current object schema to `ApproveTxObjectSchema`. Make `ApproveTxSchema` a
+    `z.union([ApproveTxObjectSchema, z.array(ApproveTxObjectSchema).nonempty().transform((items) => items[0])])`.
+  - Test: add a `packages/core/test/trading.test.ts` case with today's live array fixture.
+  - Verify: `npx vitest run packages/core/test/trading.test.ts`, then `npm run check` (tsc + full suite),
+    then both dry-runs again.
+  - Commit: `fix(core): accept the live one-element array from approve-transaction`.
+- **Addresses for step 1:**
+  - Demo wallet `0xB89a65d5b5bf0e99E8A3ff74398470e4E153951f`
+  - Merchant `0x8e8B22406158c2243BC325b4E3b12b34EeB301B0`
+  - AW `0x72905bF92D6a74414deC2236C5b76e8E7372950f`
+- **Step 1 done** (you reported it at ~18:01 UTC). Balances read on-chain at 18:04 UTC:
+  - Demo: USDT 3.1 + BNB 0.00081
+  - AW: USDT 3 + BNB 0.00054
+  - Merchant: BNB 0.00081
+  - The funding tx hashes go into `funding.md` in step 8.
+- **Step 3 done** (18:04 UTC, after the fix): NVDAB 2.50 → `≈0.01083 NVDAB`, `simulation OK`; TSLAB 0.50 →
+  `≈0.001308 TSLAB`, `simulation OK`.
+- **Watch:** verify-funding needs ≥ 0.0005 BNB per wallet. The AW starts at 0.00054, so its two swaps
+  could leave it just under that. If so, top up ~0.0003 BNB (~$0.25).
 - **Risk:**
   - Blast radius is ~$10 of your funds.
   - A withdrawal on the wrong network can be lost.
@@ -604,6 +692,8 @@ Sunday morning):
 | 2026-10-10 15:05 | campaign | Kickoff (`KICKOFF_GATES.md`). Granted: built-in browser / Claude in Chrome for reading pages, Render/BscScan checks and form review; PowerShell + Bash in the repo; read-only verify commands against mainnet RPC and the Binance Web3 API. **Not granted:** main wallet, seed phrases, payment details, KYC. No gate consented yet. |
 | 2026-10-10 17:35 | P1 | "check .env is available with api keys setup": a names-only check, run once. Result is in P1. No gate run. |
 | 2026-10-10 17:37 | G1 | "renamed the keys, run G1" → G1 executed (names-only re-check, 3 smokes, verify, commit). |
+| 2026-10-10 17:43 | G2, prep G3 | "baw is signed in with wallet, check and run G2, then prepare G3" → G2 steps 1–2 run; the preview is blocked (baw not signed in on this machine). prep G3 run: P5 `new-burner` + read-only dry-runs. |
+| 2026-10-10 ~18:01 | fix, G2, G3 step 1 | "fix approve and I have loaded all 3 wallet (baw is logged in …)" → approve fix applied and verified; G2 finished; read-only balance and dry-run checks for G3. |
 
 ## Account actions
 
@@ -612,9 +702,14 @@ Sunday morning):
 | before 15:01 | you | Binance Web3 Developer Portal | API key + secret issued and put in `.env` (under `API_KEY` / `SECRET_KEY`) |
 | before 17:35 | you | Render | Account exists (reported by you) |
 | ~17:36 | you | local `.env` | Renamed `API_KEY` → `BINANCE_API_KEY` and `SECRET_KEY` → `BINANCE_API_SECRET`; added `DEVEX_EVENTS_PATH` |
+| 17:44 | concierge | merchant Studio wallet | `npx bag wallet new --generate-password` → `0x8e8B22406158c2243BC325b4E3b12b34EeB301B0` (keystore + password in git-ignored `.studio/`) |
+| 17:46 | concierge | demo wallet | `npm run ops -- new-burner` → `0xB89a65d5b5bf0e99E8A3ff74398470e4E153951f` (key written to `.env` by the script; never printed) |
+| ~18:02 | you | Binance Agentic Wallet | `baw auth signin` completed (48 h session) |
 
 ## Transactions (BSC mainnet)
 
 | UTC | Gate | From → to | What | Tx |
 |---|---|---|---|---|
-| _none yet_ | | | | |
+| before 18:01 | G3 step 1 | you → demo `0xB89a…951f` | 3.1 USDT + 0.00081 BNB | _hashes → funding.md_ |
+| before 18:01 | G3 step 1 | you → AW `0x7290…950f` | 3 USDT + 0.00054 BNB | _hashes → funding.md_ |
+| before 18:01 | G3 step 1 | you → merchant `0x8e8B…01B0` | 0.00081 BNB | _hashes → funding.md_ |
