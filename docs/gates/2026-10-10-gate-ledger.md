@@ -113,7 +113,7 @@ the kit's tier examples:
 | G3 | Fund, buy, approve (ops:9) | C | P5, G2 | send ~$10, run buys + approve | balances, dry-runs, poll, record, verify | 45–75 min | **done** 18:23 (PASS); funding hashes pending |
 | P3 | Render account + GitHub access | C | — | sign up, connect the repo | — | 10 min | account exists; repo access unchecked |
 | G4 | Merchant on Render SG + ERC-8004 (ops:10) | C | G1, G2, P3 | Blueprint, secrets, register | smokes, BscScan, record, verify | 30–45 min | **done** 19:23 (PASS; agent 370837) |
-| G5 | Checkout on Render SG (ops:11) | C | G4, P5 | secrets, deploy, keep-awake monitor | smoke, UI check, record, verify | 30–45 min | pending |
+| G5 | Checkout on Render SG (ops:11) | C | G4, P5 | secrets, deploy, keep-awake monitor | smoke, UI check, record, verify | 30–45 min | **done** 19:46 (PASS); monitor pending (yours) |
 | G6 | Live rehearsal + recorded-run seeds (ops:12) | C | G2–G5 | live payments + passcode | export, summary, verify seeds | 60–90 min | pending |
 | DX | Developer Experience Report | C | G1–G6 (material) | write + submit (human-only) | facts sheet / measured summary on ask | 60–90 min | pending |
 | DEMO | Demo video (Step 2.5 demo-studio) | — | G3, G5, G6, P4 | run demo-studio | consume its URL | ~3 h | pending |
@@ -599,8 +599,18 @@ Sunday morning):
 - **Risk:**
   - `40304` → Frankfurt, or the plan's ngrok static-domain fallback (needs your ngrok account).
   - The passcode reaches judges only through the submission form, typed by you.
-- **Status:** pending.
-- **Evidence:** _checkout URL · checkout-live · UI check · monitor · verify · commit_
+- **Status:** **done**, 19:46 UTC. You set the checkout's env on Render ("run G5, env vars set on render",
+  ~19:42 UTC).
+- **Evidence:**
+  - **URL:** https://sharepay-checkout.onrender.com, `/api/health` → `version 0.1.0+5478de1`, `api-signer`,
+    buyer `0xB89a…951f`.
+  - **Smoke:** `CHECKOUT_URL=… npm run smoke -- checkout-live` → `OK — … (api-signer): Binance, RPC and merchant reachable`
+    (deep: binance `488 RWA tokens (code 0)`, rpc reachable, merchant `HTTP 200`).
+  - **UI check (built-in browser):** three cards ($0.05 / $0.10 / $0.01). The picker shows NVIDIA 0.01084
+    and Tesla 0.001306 shares. **Simulate** on "NVDA research report" reached "Sale checked: The sale
+    was simulated on BSC and succeeds" (nothing signed or broadcast). "No recorded live run yet" until G6.
+  - **Verify:** `npm run smoke -- verify checkout-live` → `PASS`.
+  - **Monitor:** _pending (yours, an account signup)_.
 
 ## G6 — live money-shot rehearsal + recorded-run seeds (ops:12, category wallet)
 
@@ -749,6 +759,7 @@ Sunday morning):
 | 2026-10-10 ~18:20 | G3 | "G3 done on here on terminal" → I read the Terminal panel, polled the AW orders, verified receipts, wrote `funding.md`, ran verify-funding and committed. |
 | 2026-10-10 ~19:02 | G4 | "run G4. run commands yourself autonomously (I approve you to do so)" → the concierge runs G4's commands itself, including `npx bag erc8004 register`: one mainnet identity tx from the merchant key, moving no funds. Scope: **G4 only.** It does not extend to entering keys or secrets into dashboards, or to any trade or live payment. |
 | 2026-10-10 ~19:13 | G4 | "go, sent BNB and set the card URL" → registration run, confirmed on-chain, gate verified, committed. |
+| 2026-10-10 ~19:42 | G5 | "run G5, env vars set on render" → health probes, smoke, UI check incl. a Simulate run (no spend), verify, commit. |
 
 ## Account actions
 
@@ -763,6 +774,7 @@ Sunday morning):
 | ~18:42 | you | Render | Blueprint `exs-db58dcl9fdbs73bvfbcg` from `bitnormie01/sharepay` (`main`). It created `sharepay-merchant` (live) and `sharepay-checkout` (failed deploy, expected until G5); merchant secrets entered by you |
 | ~19:00 | you | Render | `sharepay-merchant`: `MERCHANT_PUBLIC_URL` fixed (was `null`) |
 | ~19:12 | you | Render | `sharepay-merchant`: added `AGENTCORE_RUNTIME_URL=https://sharepay-merchant.onrender.com/` |
+| ~19:40 | you | Render | `sharepay-checkout` env set: API key/secret, `BUYER_PRIVATE_KEY` (demo wallet), `LIVE_PASSCODE`, `MERCHANT_URL`. Live at 19:43 UTC |
 
 ## Transactions (BSC mainnet)
 

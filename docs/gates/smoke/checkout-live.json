@@ -1,0 +1,25 @@
+{
+  "id": "checkout-live",
+  "at": "2026-10-10T19:43:53.499Z",
+  "ok": true,
+  "summary": "checkout up at https://sharepay-checkout.onrender.com (api-signer): Binance, RPC and merchant reachable",
+  "detail": {
+    "url": "https://sharepay-checkout.onrender.com",
+    "status": 200,
+    "walletMode": "api-signer",
+    "deep": {
+      "binance": {
+        "ok": true,
+        "detail": "488 RWA tokens (code 0)"
+      },
+      "rpc": {
+        "ok": true,
+        "detail": "BSC RPC reachable"
+      },
+      "merchant": {
+        "ok": true,
+        "detail": "HTTP 200"
+      }
+    }
+  }
+}
