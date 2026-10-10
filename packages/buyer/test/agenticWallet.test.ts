@@ -76,6 +76,65 @@ describe("createBawClient", () => {
     const garbage: ExecFn = async () => ({ stdout: "Usage: baw ...", stderr: "", code: 1 });
     await expect(createBawClient(garbage, "baw").address()).rejects.toBeInstanceOf(BawError);
   });
+
+  it("falls back to the recent-orders list when the printed orderId is not listed (live 2026-10-10)", async () => {
+    const calls: string[][] = [];
+    const listed = {
+      orderType: "market",
+      orderId: "26101000001955689415",
+      chain: "56",
+      fromToken: "0x55d398326f99059fF775485246999027B3197955",
+      fromTokenName: "USDT",
+      fromTokenQty: "2.500000000000000000",
+      toToken: "0x02Fca66C1D1aFB4E2A7884261eB00F63598a7436",
+      toTokenName: "NVDAB",
+      toTokenActualQty: "0.010844824172183502",
+      status: "FINISHED",
+      slippage: "1.0000",
+      txHash: "0xcb9a2955dd82873467b5d97125be9e078ce486d64c4e8372cab9bac9172e2a20",
+      bookTime: "2026-10-10T23:42:49+05:30",
+      updatedTime: "2026-10-10T23:42:50+05:30",
+    };
+    const tslab = { ...listed, orderId: "26101000001955689591", fromTokenQty: "0.500000000000000000", toToken: "0x5b1910eAaD6450E50f816082Aa078C41F10C292f", toTokenName: "TSLAB" };
+    const older = { ...listed, orderId: "26101000001955600000", bookTime: "2026-10-10T22:00:00+05:30", txHash: "0xold" };
+    const client = createBawClient(
+      scriptedExec(
+        [
+          () => ({ success: true, data: { orderId: "26101000001955689740" } }),
+          () => ({ success: true, data: { total: 0, page: 1, pageSize: 1, list: [] } }),
+          () => ({ success: true, data: { total: 3, list: [tslab, listed, older] } }),
+          () => ({ success: true, data: { total: 1, list: [listed] } }),
+        ],
+        calls,
+      ),
+      "baw",
+      { nowMs: () => Date.parse("2026-10-10T18:12:48Z") },
+    );
+    const id = await client.swap({ fromToken: getStable("USDT").address, toToken: NVDAB.address, fromTokenQty: "2.5" });
+    expect(id).toBe("26101000001955689740");
+    expect(await client.order(id)).toEqual({ status: "FINISHED", txHash: listed.txHash });
+    expect(calls[1]).toEqual(["market-order", "list", "--orderId", "26101000001955689740", "--json"]);
+    expect(calls[2]).toEqual(["market-order", "list", "--json"]);
+    expect(await client.order(id)).toEqual({ status: "FINISHED", txHash: listed.txHash });
+    expect(calls[3]).toEqual(["market-order", "list", "--orderId", "26101000001955689415", "--json"]);
+  });
+
+  it("keeps an unlisted order PENDING when nothing in the recent list matches it", async () => {
+    const client = createBawClient(
+      scriptedExec(
+        [
+          () => ({ success: true, data: { orderId: "1" } }),
+          () => ({ success: true, data: { list: [] } }),
+          () => ({ success: true, data: { list: [{ orderId: "2", fromToken: NVDAB.address, toToken: U, fromTokenQty: "9", status: "FINISHED", txHash: "0xother", bookTime: "2026-10-10T18:20:00Z" }] } }),
+        ],
+        [],
+      ),
+      "baw",
+      { nowMs: () => Date.parse("2026-10-10T18:12:48Z") },
+    );
+    const id = await client.swap({ fromToken: NVDAB.address, toToken: U, fromTokenQty: "0.000305765006234045" });
+    expect(await client.order(id)).toEqual({ status: "PENDING", txHash: null });
+  });
 });
 
 describe("matchOption", () => {

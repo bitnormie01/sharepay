@@ -47,7 +47,36 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
-export function createBawClient(exec: ExecFn, bin: string): BawClient {
+export interface BawClientOptions {
+  nowMs?: () => number;
+}
+
+interface SwapContext {
+  fromToken: Address;
+  toToken: Address;
+  fromTokenQty: string;
+  startedAtMs: number;
+  resolvedId: string | null;
+}
+
+// How far before our own clock a listed order's bookTime may fall (clock skew between this host and Binance).
+const BOOK_TIME_SKEW_MS = 120_000;
+
+// "2.500000000000000000" (as baw lists it) and "2.5" (as we pass it) are the same quantity.
+function sameQty(listed: unknown, requested: string): boolean {
+  if (typeof listed !== "string" && typeof listed !== "number") return false;
+  const norm = (v: string) => (v.includes(".") ? v.replace(/0+$/, "").replace(/\.$/, "") : v);
+  return norm(String(listed)) === norm(requested);
+}
+
+function orderStatus(entry: Record<string, unknown>): { status: string; txHash: string | null } {
+  return { status: String(entry.status ?? "PENDING"), txHash: typeof entry.txHash === "string" ? entry.txHash : null };
+}
+
+export function createBawClient(exec: ExecFn, bin: string, options: BawClientOptions = {}): BawClient {
+  const nowMs = options.nowMs ?? Date.now;
+  const swaps = new Map<string, SwapContext>();
+
   async function run(args: string[], timeoutMs = 60_000): Promise<Record<string, unknown>> {
     const { file, prefix } = bawCommand(bin);
     const command = args.slice(0, 2).join(" ");
@@ -80,19 +109,46 @@ export function createBawClient(exec: ExecFn, bin: string): BawClient {
       return String((await run(["wallet", "status", "--json"])).status ?? "UNKNOWN");
     },
     async swap(params) {
+      const startedAtMs = nowMs();
       const data = await run(
         ["market-order", "swap", "--fromTokenQty", params.fromTokenQty, "--fromToken", params.fromToken, "--toToken", params.toToken, "--binanceChainId", "56", "--slippage", "auto", "--mev", "true", "--json"],
         120_000,
       );
       if (typeof data.orderId !== "string" && typeof data.orderId !== "number") throw new BawError("market-order swap", "no orderId");
-      return String(data.orderId);
+      const orderId = String(data.orderId);
+      swaps.set(orderId, { ...params, startedAtMs, resolvedId: null });
+      return orderId;
     },
     async order(orderId) {
-      const data = await run(["market-order", "list", "--orderId", orderId, "--json"]);
+      const context = swaps.get(orderId);
+      const lookupId = context?.resolvedId ?? orderId;
+      const data = await run(["market-order", "list", "--orderId", lookupId, "--json"]);
       const list = Array.isArray(data.list) ? data.list.map(asRecord) : [];
-      const entry = list.find((o) => String(o.orderId) === orderId) ?? list[0];
-      if (!entry) return { status: "PENDING", txHash: null };
-      return { status: String(entry.status ?? "PENDING"), txHash: typeof entry.txHash === "string" ? entry.txHash : null };
+      const entry = list.find((o) => String(o.orderId) === lookupId) ?? list[0];
+      if (entry) return orderStatus(entry);
+      if (!context || context.resolvedId) return { status: "PENDING", txHash: null };
+      // The id `market-order swap` prints is not always the listed one (live 2026-10-10: the swap printed
+      // …689740, the order was listed as …689415 and `list --orderId …689740` returned nothing). Match our own
+      // order in the recent list instead: same tokens and quantity, booked after this swap started.
+      const claimed = new Set([...swaps.values()].map((c) => c.resolvedId).filter((id): id is string => id !== null));
+      const recent = await run(["market-order", "list", "--json"]);
+      const match = (Array.isArray(recent.list) ? recent.list.map(asRecord) : [])
+        .map((o) => ({ o, bookedMs: typeof o.bookTime === "string" ? Date.parse(o.bookTime) : Number.NaN }))
+        .filter(
+          ({ o, bookedMs }) =>
+            typeof o.fromToken === "string" &&
+            sameAddress(o.fromToken, context.fromToken) &&
+            typeof o.toToken === "string" &&
+            sameAddress(o.toToken, context.toToken) &&
+            sameQty(o.fromTokenQty, context.fromTokenQty) &&
+            !claimed.has(String(o.orderId)) &&
+            Number.isFinite(bookedMs) &&
+            bookedMs >= context.startedAtMs - BOOK_TIME_SKEW_MS,
+        )
+        .sort((a, b) => a.bookedMs - b.bookedMs)[0];
+      if (!match) return { status: "PENDING", txHash: null };
+      context.resolvedId = String(match.o.orderId);
+      return orderStatus(match.o);
     },
     async x402Preview(paymentRequirements) {
       const data = await run(["x402-payment", "preview", "--paymentRequirements", paymentRequirements, "--json"]);
