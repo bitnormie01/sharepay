@@ -643,6 +643,16 @@ Sunday morning):
       and this ledger.
       Message: `chore(gates): G6 live rehearsal receipts and merchant reinvest seeded (verified on-chain)`.
       Push: Render redeploys, and hosted Simulate shows the recorded runs.
+- **Pre-G6 fix, ~20:05 UTC** (you said "fix order poll"):
+  - **Bug:** `createBawClient().order()` polled only `market-order list --orderId <printed id>`. In G3 that
+    returned `total: 0` for the NVDAB order (printed `…689740`, listed `…689415`), so an Agentic Wallet sale
+    could stall as PENDING until its timeout.
+  - **Fix:** when the by-id lookup is empty, it matches the earliest unclaimed order in
+    `market-order list --json` with the same tokens and quantity, booked no earlier than 120 s before the
+    swap started, and caches that id for later polls.
+  - **Tests:** 2 added (the live G3 fixture, and no match → PENDING). The live-fixture test fails on the old
+    code. `npm run check` → 44 files / **311** tests; web tsc clean.
+  - **Commit:** `fix(buyer): find the Agentic Wallet order when the printed orderId is not listed`.
 - **Risk:**
   - The SPYB reinvest may be postponed: sweep minimum, or no weekend route (risk 1).
   - Render's ephemeral disk (risk 2).
@@ -760,6 +770,7 @@ Sunday morning):
 | 2026-10-10 ~19:02 | G4 | "run G4. run commands yourself autonomously (I approve you to do so)" → the concierge runs G4's commands itself, including `npx bag erc8004 register`: one mainnet identity tx from the merchant key, moving no funds. Scope: **G4 only.** It does not extend to entering keys or secrets into dashboards, or to any trade or live payment. |
 | 2026-10-10 ~19:13 | G4 | "go, sent BNB and set the card URL" → registration run, confirmed on-chain, gate verified, committed. |
 | 2026-10-10 ~19:42 | G5 | "run G5, env vars set on render" → health probes, smoke, UI check incl. a Simulate run (no spend), verify, commit. |
+| 2026-10-10 ~20:00 | pre-G6 | "so everything is working end-to-end as expected, right?" → status answer (no execution). Then "fix order poll" → baw order-poll fix + tests, committed. |
 
 ## Account actions
 
