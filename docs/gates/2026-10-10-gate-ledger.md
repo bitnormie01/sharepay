@@ -79,14 +79,14 @@ the kit's tier examples:
 
 | # | Gate | Tier | Needs first | Your part | My part | Est. | Status |
 |---|---|---|---|---|---|---|---|
-| P1 | Binance Web3 API key → `.env` | C | — | create the key, put it in `.env` | G1's signed call is the test | 10 min | **confirm?** |
+| P1 | Binance Web3 API key → `.env` | C | — | create the key, put it in `.env` | G1's signed call is the test | 10 min | **rename needed** (17:35) |
 | G1 | Day-1 smoke (ops:7) | A | P1 | — | 3 smokes, record, verify, commit | 10 min | pending |
 | P5 | Demo wallet key + weekend route check (`prep G3`) | A | P1 | — (or run it yourself) | `new-burner`, read-only dry-run quotes | 5 min | pending |
-| P2 | "Apply as Hacker" registration | C | P1 | fill + submit | pre-answers | 5 min | **confirm?** |
+| P2 | "Apply as Hacker" registration | C | P1 | fill + submit | pre-answers | 5 min | **not registered** (17:35) |
 | P4 | `baw auth signin` | B | — | scan the QR in the Binance app | status / settings / address | 5 min | UNCONNECTED |
 | G2 | Merchant wallet + AW preview of our 402 (ops:8) | B | P1, P4 | (the P4 QR) | keygen, local merchant, preview, verify | 20 min | pending |
 | G3 | Fund, buy, approve (ops:9) | C | P5, G2 | send ~$10, run buys + approve | balances, dry-runs, poll, record, verify | 45–75 min | pending |
-| P3 | Render account + GitHub access | C | — | sign up, connect the repo | — | 10 min | **confirm?** |
+| P3 | Render account + GitHub access | C | — | sign up, connect the repo | — | 10 min | account exists; repo access unchecked |
 | G4 | Merchant on Render SG + ERC-8004 (ops:10) | C | G1, G2, P3 | Blueprint, secrets, register | smokes, BscScan, record, verify | 30–45 min | pending |
 | G5 | Checkout on Render SG (ops:11) | C | G4, P5 | secrets, deploy, keep-awake monitor | smoke, UI check, record, verify | 30–45 min | pending |
 | G6 | Live rehearsal + recorded-run seeds (ops:12) | C | G2–G5 | live payments + passcode | export, summary, verify seeds | 60–90 min | pending |
@@ -116,7 +116,27 @@ the kit's tier examples:
 - Ideally G6 PASS too: the money shot proven once, and seeds so the hosted Simulate mode shows recorded
   runs.
 
-**Timeline to the lock** (now 15:20 UTC = 20:50 IST; 20 h 40 m left):
+**Revised timeline** (17:35 UTC = 23:05 IST; 18 h 25 m left; the start slipped ~2 h, so G6 moves to
+Sunday morning):
+
+| UTC | IST | Work |
+|---|---|---|
+| Sat 17:45–18:15 | 23:15–23:45 | P1 rename → G1 → `prep G3` (P5 + weekend route check) · P2 (yours) |
+| 18:15–18:45 | 23:45–00:15 | P4 + G2 |
+| 18:45–19:45 | 00:15–01:15 | G3 (while funds travel: G4 Step 1, the Blueprint) |
+| 19:45–20:30 | 01:15–02:00 | G4 |
+| 20:30–21:15 | 02:00–02:45 | G5 · **checkpoint: G5 PASS by 21:30 UTC (03:00 IST)** |
+| Sun 01:30–03:00 | 07:00–08:30 | G6 (re-sign in to AW if needed) |
+| 03:00–06:00 | 08:30–11:30 | DEMO |
+| 06:00–07:30 | 11:30–13:00 | DX write + submit (or earlier, in tonight's gaps) |
+| 07:30–08:30 | 13:00–14:00 | TBD → FLIP → SUB-fill → SUB-submit |
+| 08:30–12:00 | 14:00–17:30 | buffer (3.5 h). **No pushes after 12:00 UTC.** |
+
+**Revised verdict:** this still fits, provided **G3's funding lands tonight**.
+- If G3 has to move to Sunday as well, Sunday becomes ~8.5 h of work in ~10.5 h, with no real margin.
+- If you push G6 through tonight instead (done by ~22:45 UTC / 04:15 IST), Sunday gains ~1.5 h of buffer.
+
+**Original timeline** (superseded; kept for the record. At 15:20 UTC = 20:50 IST, 20 h 40 m were left):
 
 | UTC | IST | Work |
 |---|---|---|
@@ -153,8 +173,17 @@ the kit's tier examples:
 - **My part:** none until then. G1's signed `rwa` call is the harmless proof that the key works.
 - **Risk:** if the key leaks, rotate it in the portal. `.env` is git-ignored (verified). The portal and API
   check IP region; India is not on the restricted list (event.md §2).
-- **Status:** unknown, please confirm. `.env` changed at 15:01 UTC today; I have not opened it.
-- **Evidence:** _G1 `rwa` record_
+- **Status:** key issued, but stored under the **wrong names** (17:35 UTC).
+  - Checked at your request with a names-only parse (Node's `util.parseEnv`; no values or lengths
+    printed).
+  - Present: `KEY_NAME`, `API_KEY`, `SECRET_KEY`, `B402_Payments`, all set.
+  - Absent: `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `DEVEX_EVENTS_PATH`, plus everything else from
+    `.env.example`.
+  - The code reads only `BINANCE_API_KEY` / `BINANCE_API_SECRET` (`scripts/smoke.ts`, `scripts/ops.ts`,
+    `packages/merchant/src/runtime.ts`).
+  - **Fix (yours):** rename `API_KEY` → `BINANCE_API_KEY` and `SECRET_KEY` → `BINANCE_API_SECRET`, and
+    add `DEVEX_EVENTS_PATH=devex/events.jsonl`. Then I re-run the names-only check.
+- **Evidence:** _names-only check after the rename · G1 `rwa` record_
 
 ## G1 — day-1 smoke from this PC (ops:7, category secret)
 
@@ -235,7 +264,7 @@ the kit's tier examples:
     (bStocks + Ondo); a BNB Agent Studio merchant settles its own payments and reinvests into SPYB."
 - **Risk:** a mismatched contact email means the forms aren't matched. No penalty for late registration is
   published.
-- **Status:** unknown. Tell me if you already registered; I record only the date.
+- **Status:** not registered yet (you, 17:35 UTC). Do it as soon as the key is renamed; it takes ~5 min.
 - **Evidence:** _registered on <date> (your confirmation)_
 
 ## P4 — Agentic Wallet sign-in (`baw auth signin`)
@@ -335,7 +364,8 @@ the kit's tier examples:
   1. Sign up or in at https://dashboard.render.com.
   2. Connect GitHub and grant access to `bitnormie01/sharepay` (repo-scoped is enough; it is private).
   3. If Render asks for a payment method, that step is yours. The Blueprint requests the **free** plan.
-- **Status:** unknown, please confirm.
+- **Status:** the account exists (you, 17:35 UTC). GitHub access to the private repo is checked when you
+  create the Blueprint in G4.
 
 ## G4 — deploy the merchant agent (Render Singapore) + register ERC-8004 (ops:10, category deploy)
 
@@ -551,12 +581,14 @@ the kit's tier examples:
 | UTC | Gate | Consent / instruction (user's words, abridged) |
 |---|---|---|
 | 2026-10-10 15:05 | campaign | Kickoff (`KICKOFF_GATES.md`). Granted: built-in browser / Claude in Chrome for reading pages, Render/BscScan checks and form review; PowerShell + Bash in the repo; read-only verify commands against mainnet RPC and the Binance Web3 API. **Not granted:** main wallet, seed phrases, payment details, KYC. No gate consented yet. |
+| 2026-10-10 17:35 | P1 | "check .env is available with api keys setup": a names-only check, run once. Result is in P1. No gate run. |
 
 ## Account actions
 
 | UTC | Who | Account / service | Action |
 |---|---|---|---|
-| _none yet_ | | | |
+| before 15:01 | you | Binance Web3 Developer Portal | API key + secret issued and put in `.env` (under `API_KEY` / `SECRET_KEY`) |
+| before 17:35 | you | Render | Account exists (reported by you) |
 
 ## Transactions (BSC mainnet)
 
