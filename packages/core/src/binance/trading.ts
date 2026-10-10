@@ -107,7 +107,7 @@ const SwapBuildSchema: z.ZodType<SwapBuild, z.ZodTypeDef, unknown> = z
   })
   .passthrough();
 
-const ApproveTxSchema: z.ZodType<ApproveTx, z.ZodTypeDef, unknown> = z
+const ApproveTxObjectSchema = z
   .object({
     data: z.string(),
     dexContractAddress: z.string(),
@@ -115,6 +115,15 @@ const ApproveTxSchema: z.ZodType<ApproveTx, z.ZodTypeDef, unknown> = z
     gasPrice: stringish.optional(),
   })
   .passthrough();
+
+// The docs show an object; the live API (2026-10-10) answers with a one-element array. Accept both.
+const ApproveTxSchema: z.ZodType<ApproveTx, z.ZodTypeDef, unknown> = z.union([
+  ApproveTxObjectSchema,
+  z
+    .array(ApproveTxObjectSchema)
+    .nonempty()
+    .transform((items) => items[0]),
+]);
 
 export function createTradingApi(client: BinanceClient): TradingApi {
   return {

@@ -85,6 +85,33 @@ describe("createTradingApi", () => {
     expect(calls[0]?.query).toEqual({ binanceChainId: "56", tokenContractAddress: NVDAB, approveAmount: "1000000000000000000000000000000", vendor: "LiquidMesh" });
     expect(approve.dexContractAddress).toBe("0xb44446b0c8e56988c34f7ff73ae904982b5fdda5");
   });
+
+  it("accepts the live one-element array from approve-transaction (captured 2026-10-10)", async () => {
+    const api = createTradingApi(
+      fakeClient(
+        {
+          "/api/v1/dex/aggregator/approve-transaction": [
+            {
+              data: "0x095ea7b3000000000000000000000000b44446b0c8e56988c34f7ff73ae904982b5fdda5ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              dexContractAddress: "0xB44446b0c8E56988c34f7Ff73Ae904982b5FdDA5",
+              gasLimit: "70000",
+              gasPrice: "55203152",
+            },
+          ],
+        },
+        [],
+      ),
+    );
+    const approve = await api.approveTransaction({ tokenContractAddress: NVDAB, approveAmount: 2n ** 256n - 1n });
+    expect(approve.dexContractAddress).toBe("0xB44446b0c8E56988c34f7Ff73Ae904982b5FdDA5");
+    expect(approve.data.startsWith("0x095ea7b3")).toBe(true);
+    expect(approve.gasLimit).toBe("70000");
+  });
+
+  it("rejects an empty approve-transaction array", async () => {
+    const api = createTradingApi(fakeClient({ "/api/v1/dex/aggregator/approve-transaction": [] }, []));
+    await expect(api.approveTransaction({ tokenContractAddress: NVDAB, approveAmount: 1n })).rejects.toThrow();
+  });
 });
 
 describe("route helpers", () => {
