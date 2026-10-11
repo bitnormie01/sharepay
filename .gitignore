@@ -14,3 +14,11 @@ packages/web/dist/
 
 # BNB Agent Studio secrets (keystore + .env.local); never commit
 sharepaymerchant/.studio/
+
+# internal build and campaign notes: kept locally, not published
+docs/resources/
+docs/tollgate/
+docs/idea-forge/
+docs/superpowers/
+docs/demo/
+.claude/
