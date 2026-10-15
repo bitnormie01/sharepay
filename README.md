@@ -141,10 +141,7 @@ Environment variables (names only; values live in `.env`, which is gitignored):
 | BSC mainnet · USDT | `0x55d398326f99059ff775485246999027b3197955` | https://bscscan.com/token/0x55d398326f99059ff775485246999027b3197955 |
 | BSC mainnet · Binance aggregation router | `0xb44446b0c8e56988c34f7ff73ae904982b5fdda5` | https://bscscan.com/address/0xb44446b0c8e56988c34f7ff73ae904982b5fdda5 |
 
-TBD-post-build:merchant-agent-url
-TBD-post-build:demo-wallet-address
-TBD-post-build:merchant-wallet-address
-TBD-post-build:erc8004-registration
+
 
 ## Roadmap
 
