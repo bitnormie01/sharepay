@@ -12,6 +12,7 @@ TBD-post-build:screenshot
 Open the live checkout, pick **NVDA research report**, choose a stock and press **Pay**.
 - **Simulate mode** (the default) runs the real price check, share quote and on-chain simulation without spending anything. It then shows the most recent recorded live run with its BscScan links.
 - **Live mode** needs the passcode from the submission form. It runs every step on BSC mainnet with a few cents.
+- Password: ThisIsVeryStrongPassword
 
 ## What it does
 
