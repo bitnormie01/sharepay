@@ -5,14 +5,30 @@ Pay for x402 services on BNB Chain with tokenized stocks: the wallet sells just 
 
 ## Demo
 
-TBD-post-build:demo-video-url
-TBD-post-build:live-checkout-url
-TBD-post-build:screenshot
+- **Demo video (2:51):** https://youtu.be/Ho9ZfNCqYsA
+- **Live checkout:** https://sharepay-checkout.onrender.com
+- **Merchant agent:** https://sharepay-merchant.onrender.com ([A2A agent card](https://sharepay-merchant.onrender.com/.well-known/agent-card.json))
+
+| The catalog: three real x402 merchants | A live payment with NVIDIA shares, settled and reinvested |
+|---|---|
+| ![SharePay catalog in Agentic Wallet mode](docs/assets/checkout-catalog.png) | ![A completed live checkout: shares sold, payment approved, merchant paid, report delivered, merchant reinvested in SPYB](docs/assets/live-money-shot.png) |
 
 Open the live checkout, pick **NVDA research report**, choose a stock and press **Pay**.
-- **Simulate mode** (the default) runs the real price check, share quote and on-chain simulation without spending anything. It then shows the most recent recorded live run with its BscScan links.
-- **Live mode** needs the passcode from the submission form. It runs every step on BSC mainnet with a few cents.
-- Password: ThisIsVeryStrongPassword
+- **Simulate mode** (the default) runs the real price check, share quote and on-chain simulation without spending anything.
+- **Live mode** needs the passcode `ThisIsVeryStrongPassword`. It runs every step on BSC mainnet with a few cents, capped at 10 payments and $1.50 per UTC day.
+- The free host sleeps when idle, so the first visit can show "Starting SharePay…" for up to a minute.
+
+### Verified live run (BSC mainnet, 11 October 2026)
+
+The money shot, paid from the Binance Agentic Wallet: an NVDA research report bought with NVIDIA shares, then reinvested by the merchant into the S&P 500.
+
+| Step | What happened | Transaction |
+|---|---|---|
+| Shares sold | The Agentic Wallet sold 0.000222 NVDAB for $0.05 of U | [`0x3f4442d4…04a3`](https://bscscan.com/tx/0x3f4442d43859bd4eef184883154b53a3d88d085215c2513b010056df830404a3) |
+| Merchant paid | Our merchant verified the EIP-3009 authorization and settled it on-chain itself, with no facilitator | [`0x043cf420…9f60`](https://bscscan.com/tx/0x043cf420071fa6826fa496685ea5d78f1c683515c2dc49ef3608521396c89f60) |
+| Merchant reinvested | The merchant swapped its revenue into 0.000064 SPYB (S&P 500 bStock) | [`0x3412394d…5753`](https://bscscan.com/tx/0x3412394da02886cf8e7fce3cb2a8212edb6a36d8dd20e47779248d536a805753) |
+
+All three receipts were checked on-chain (status success). The run happened on a Sunday, while US equity markets were closed, through 24/7 AMM routes.
 
 ## What it does
 
@@ -141,7 +157,16 @@ Environment variables (names only; values live in `.env`, which is gitignored):
 | BSC mainnet · USDT | `0x55d398326f99059ff775485246999027b3197955` | https://bscscan.com/token/0x55d398326f99059ff775485246999027b3197955 |
 | BSC mainnet · Binance aggregation router | `0xb44446b0c8e56988c34f7ff73ae904982b5fdda5` | https://bscscan.com/address/0xb44446b0c8e56988c34f7ff73ae904982b5fdda5 |
 
+**SharePay's own deployment:**
 
+| What | Address or URL | Explorer |
+|---|---|---|
+| Merchant agent (Render, Singapore) | https://sharepay-merchant.onrender.com | [A2A agent card](https://sharepay-merchant.onrender.com/.well-known/agent-card.json) |
+| Merchant wallet (`payTo`, BNB Agent Studio) | `0x8e8B22406158c2243BC325b4E3b12b34EeB301B0` | https://bscscan.com/address/0x8e8B22406158c2243BC325b4E3b12b34EeB301B0 |
+| ERC-8004 identity | Agent **370837** on the IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, owned by the merchant wallet | [Registration tx](https://bscscan.com/tx/0x9db4d9c5ca745e9463301d2fbb99b9bf0c4cd866dfc9ffc49a16dff8e8a4910d) |
+| Demo wallet (hosted live mode, `api-signer`) | `0xB89a65d5b5bf0e99E8A3ff74398470e4E153951f` | https://bscscan.com/address/0xB89a65d5b5bf0e99E8A3ff74398470e4E153951f |
+| Binance Agentic Wallet (the money shot) | `0x72905bF92D6a74414deC2236C5b76e8E7372950f` | https://bscscan.com/address/0x72905bF92D6a74414deC2236C5b76e8E7372950f |
+| Checkout (Render, Singapore) | https://sharepay-checkout.onrender.com | `/api/health?deep=1` checks Binance, the RPC and the merchant |
 
 ## Roadmap
 
@@ -150,6 +175,7 @@ Environment variables (names only; values live in `.env`, which is gitignored):
 - Ondo's minimum order size greys Ondo out for cent-sized payments. It stays visible with the reason.
 - The hosted demo runs one live checkout at a time, under a daily cap.
 - Receipts outlive a restart of the free host only through the committed, on-chain-verified seed file.
+- CoinMarketCap's dossier: in our live tests the payment settled, but the reply stream was cut off before the report arrived (two settled one-cent payments, no report).
 
 **Next steps:**
 - Pay any x402 merchant by URL.

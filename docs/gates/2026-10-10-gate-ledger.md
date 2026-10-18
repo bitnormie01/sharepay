@@ -116,8 +116,8 @@ the kit's tier examples:
 | G5 | Checkout on Render SG (ops:11) | C | G4, P5 | secrets, deploy, keep-awake monitor | smoke, UI check, record, verify | 30–45 min | **done** 19:46 (PASS); monitor pending (yours) |
 | G6 | Live rehearsal + recorded-run seeds (ops:12) | C | G2–G5 | live payments + passcode | export, summary, verify seeds | 60–90 min | pending |
 | DX | Developer Experience Report | C | G1–G6 (material) | write + submit (human-only) | facts sheet / measured summary on ask | 60–90 min | pending |
-| DEMO | Demo video (Step 2.5 demo-studio) | — | G3, G5, G6, P4 | run demo-studio | consume its URL | ~3 h | pending |
-| TBD | Resolve README + draft `TBD-post-build` | A | G4, G5, DEMO | — | fill from evidence, commit | 15 min | pending |
+| DEMO | Demo video (Step 2.5 demo-studio) | — | G3, G5, G6, P4 | run demo-studio | consume its URL | ~3 h | **done**: https://youtu.be/Ho9ZfNCqYsA (2:51) |
+| TBD | Resolve README + draft `TBD-post-build` | A | G4, G5, DEMO | — | fill from evidence, commit | 15 min | **done**: README, merchant README and submission draft filled from the deployment record and the 2026-10-11 live run |
 | FLIP | Repo private → public | A | TBD | consent | secret scan, `gh repo edit`, verify | 10 min | pending |
 | SUB-fill | Fill the submission form | A (+ yours) | DX, FLIP, DEMO | Google sign-in, personal fields | non-personal fields | 15 min | pending |
 | SUB-submit | Press Submit | C | SUB-fill | press Submit | verify the confirmation page | 2 min | pending |

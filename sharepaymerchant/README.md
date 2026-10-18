@@ -7,8 +7,9 @@ A BNB Agent Studio agent that sells an NVDA research report over x402, settles e
 
 The demo video and the live checkout are linked from the [root README](../README.md#demo).
 
-TBD-post-build:merchant-agent-url
-TBD-post-build:erc8004-registration
+- **Live agent:** https://sharepay-merchant.onrender.com ([A2A agent card](https://sharepay-merchant.onrender.com/.well-known/agent-card.json)), on Render in Singapore.
+- **ERC-8004 identity:** agent **370837** on the IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` (BSC mainnet), owned by the merchant wallet `0x8e8B22406158c2243BC325b4E3b12b34EeB301B0` ([registration tx](https://bscscan.com/tx/0x9db4d9c5ca745e9463301d2fbb99b9bf0c4cd866dfc9ffc49a16dff8e8a4910d)).
+- **A verified payment and reinvest:** settlement [`0x043cf420…9f60`](https://bscscan.com/tx/0x043cf420071fa6826fa496685ea5d78f1c683515c2dc49ef3608521396c89f60), then 0.000064 SPYB bought with the revenue in [`0x3412394d…5753`](https://bscscan.com/tx/0x3412394da02886cf8e7fce3cb2a8212edb6a36d8dd20e47779248d536a805753).
 
 ## What it does
 

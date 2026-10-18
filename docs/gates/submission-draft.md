@@ -6,7 +6,7 @@ follow the project submission form ([SUB] https://forms.gle/yToDUzaDMwWnq6R6A, v
 
 How the open items get filled:
 - `TBD-post-build:<what>` lines are build outputs. Step 2.5 (demo-studio) fills the demo video. The Step-3 closing pass fills the rest.
-- Personal fields are typed by the human at paste time and **never committed**: contact email, prize wallet, Telegram handle, live passcode.
+- Personal fields are typed by the human at paste time and **never committed**: contact email, prize wallet, Telegram handle. (The live passcode is published in the README on purpose, for judges.)
 
 Submit only after the Developer Experience Report (mandatory, 25% of the score), which the human writes in
 its own form ([DX] https://forms.gle/EUQ39xf54GHjC2ys5). Raw notes are in `DEVEX_LOG.md`.
@@ -72,23 +72,23 @@ The same flow runs through the Binance Agentic Wallet (`baw market-order swap` p
 
 ## Public repository URL *(required — "It has to be public at submission time and stay public through judging.")*
 
-TBD-post-build:public-repo-url
+https://github.com/bitnormie01/sharepay
 
-(Expected: https://github.com/bitnormie01/sharepay, once flipped public after the secret scan.)
+(Public since 2026-10-11 11:52 UTC, after a full-history secret scan; verified with a logged-out request → HTTP 200.)
 
 ## Demo video URL *(required — "Four minutes or less. Check the sharing settings: if a judge cannot open it, it does not count.")*
 
-TBD-post-build:demo-video-url
+https://youtu.be/Ho9ZfNCqYsA
 
 ## Deployed link, or instructions a judge can run *(required — "A live URL is best. Add anything a judge needs to test it, but never share private keys or seed phrases.")*
 
-TBD-post-build:live-checkout-url
-TBD-post-build:merchant-agent-url
+https://sharepay-checkout.onrender.com
+https://sharepay-merchant.onrender.com
 
 Instructions for judges:
 - Open the live checkout, choose **NVDA research report**, pick a stock and press the button.
 - **Simulate mode** is the default and spends nothing. It runs the real price check, the share quote and an on-chain simulation through the Binance Transaction API. It then shows the most recent recorded live run, with its sale, settlement and reinvestment links on BscScan.
-- **Live mode** pays for real with a few cents of shares from our demo wallet. The live passcode is entered at paste time (never committed). There is a cap of 10 live payments and $1.50 per UTC day, and live payments run one at a time.
+- **Live mode** pays for real with a few cents of shares from our demo wallet. The live passcode is in the README Demo section (`ThisIsVeryStrongPassword`). There is a cap of 10 live payments and $1.50 per UTC day, and live payments run one at a time.
 - The free host sleeps when idle, so the first visit can show "Starting SharePay…" for up to a minute.
 - To run it yourself, follow the README Quickstart (an API key is needed; no private keys are shared).
 
@@ -104,7 +104,7 @@ Instructions for judges:
 |---|---|
 | Team or project name | SharePay |
 | Contact email | Entered at submit time (same as registration) |
-| Public repository URL | TBD-post-build:public-repo-url |
+| Public repository URL | https://github.com/bitnormie01/sharepay |
 | Which Binance Web3 API modules or tools did you use? | RWA Data API, Trading API, Transaction API, Wallet API, b402 Payments, Agentic Wallet / Wallet Skills, BNB Agent Studio |
 | Team size | 1 |
 | Prior Binance Web3 API use | The human answers |
