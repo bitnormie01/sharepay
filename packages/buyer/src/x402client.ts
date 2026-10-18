@@ -53,7 +53,14 @@ export async function replayWithPayment(
   return { response, settlement: decodeSettlementResponse(response.headers.get("payment-response")) };
 }
 
-export function signedHeaderWindow(headerValue: string, nowSec: number): { ok: boolean; reason: string | null } {
+// maxFutureSec tolerates a signer whose validAfter is a few seconds ahead of our clock. When validAfter is
+// not yet strictly in the past, waitSec says how long to hold the header: the merchant rejects a future
+// validAfter, and EIP-3009 settlement needs block.timestamp > validAfter.
+export function signedHeaderWindow(
+  headerValue: string,
+  nowSec: number,
+  maxFutureSec = 0,
+): { ok: boolean; reason: string | null; waitSec: number } {
   let validAfter: bigint;
   let validBefore: bigint;
   try {
@@ -61,11 +68,12 @@ export function signedHeaderWindow(headerValue: string, nowSec: number): { ok: b
     validAfter = BigInt(payload.payload.authorization.validAfter);
     validBefore = BigInt(payload.payload.authorization.validBefore);
   } catch (error) {
-    return { ok: false, reason: `undecodable payment header: ${error instanceof Error ? error.message : String(error)}` };
+    return { ok: false, reason: `undecodable payment header: ${error instanceof Error ? error.message : String(error)}`, waitSec: 0 };
   }
   const now = BigInt(nowSec);
-  if (validAfter > now) return { ok: false, reason: "signature is not valid yet" };
-  if (validBefore < now + 6n) return { ok: false, reason: "signature expires too soon" };
-  if (validBefore - now > 3600n) return { ok: false, reason: "signature window is more than an hour" };
-  return { ok: true, reason: null };
+  if (validAfter > now + BigInt(maxFutureSec)) return { ok: false, reason: "signature is not valid yet", waitSec: 0 };
+  const waitSec = validAfter >= now ? Number(validAfter - now) + 2 : 0;
+  if (validBefore < now + BigInt(waitSec) + 6n) return { ok: false, reason: "signature expires too soon", waitSec: 0 };
+  if (validBefore - now > 3600n) return { ok: false, reason: "signature window is more than an hour", waitSec: 0 };
+  return { ok: true, reason: null, waitSec };
 }

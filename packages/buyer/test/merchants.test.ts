@@ -104,6 +104,24 @@ describe("cmcDossierAdapter", () => {
     expect(deliverable).toEqual({ kind: "json", title: "NVDA research dossier (CoinMarketCap)", data: { identity: { symbol: "NVDA" } } });
   });
 
+  it("joins multi-line SSE data and skips progress/ping events around the response (live 2026-10-11)", async () => {
+    const inner = JSON.stringify({ ok: true, data: { identity: { symbol: "NVDA" } } });
+    const rpc = JSON.stringify({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: inner }] } });
+    const split = rpc.indexOf(',"result"');
+    const progress = JSON.stringify({ jsonrpc: "2.0", method: "notifications/progress", params: { progress: 1 } });
+    const body = `event: message\ndata: ${progress}\n\nevent: message\ndata: ${rpc.slice(0, split)}\ndata: ${rpc.slice(split)}\n\n: keep-alive\nevent: ping\ndata: \n\n`;
+    expect(parseSseJson(body)).toMatchObject({ jsonrpc: "2.0", id: 1 });
+    const deliverable = await cmcDossierAdapter().deliver(new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } }), ctx([], []));
+    expect(deliverable).toEqual({ kind: "json", title: "NVDA research dossier (CoinMarketCap)", data: { identity: { symbol: "NVDA" } } });
+  });
+
+  it("reads a plain JSON body and puts an excerpt of an unreadable one into the error", async () => {
+    const inner = JSON.stringify({ ok: true, data: { x: 1 } });
+    const plain = JSON.stringify({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: inner }] } });
+    expect(await cmcDossierAdapter().deliver(new Response(plain, { status: 200 }), ctx([], []))).toMatchObject({ data: { x: 1 } });
+    await expect(cmcDossierAdapter().deliver(new Response("<html>gateway timeout</html>", { status: 200 }), ctx([], []))).rejects.toThrow("gateway timeout");
+  });
+
   it("rejects tool errors and non-ok results", async () => {
     const errorBody = `data:${JSON.stringify({ jsonrpc: "2.0", id: 1, result: { isError: true, content: [{ type: "text", text: "SKILL_NOT_FOUND" }] } })}\n`;
     await expect(cmcDossierAdapter().deliver(new Response(errorBody, { status: 200 }), ctx([], []))).rejects.toThrow("SKILL_NOT_FOUND");

@@ -1,13 +1,36 @@
 import { DeliveryError, type MerchantAdapter } from "./types.js";
 
+// One SSE event's data may span several `data:` lines (joined with "\n"), and an MCP stream can carry
+// progress or ping events around the JSON-RPC response (live 2026-10-11: reading only the last `data:` line
+// gave "unreadable response" after a settled payment). Return the last event that parses as a JSON-RPC
+// response (result or error), else the last parseable event, else the whole body as JSON.
 export function parseSseJson(body: string): unknown {
-  const dataLines = body
-    .split(/\r?\n/)
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.slice(5).trim())
-    .filter((line) => line.length > 0);
-  const text = dataLines.length > 0 ? dataLines[dataLines.length - 1] ?? "" : body.trim();
-  return JSON.parse(text);
+  const events: string[] = [];
+  let current: string[] = [];
+  for (const line of body.split(/\r?\n/)) {
+    if (line === "") {
+      if (current.length > 0) events.push(current.join("\n"));
+      current = [];
+    } else if (line.startsWith("data:")) {
+      current.push(line.slice(5).replace(/^ /, ""));
+    }
+  }
+  if (current.length > 0) events.push(current.join("\n"));
+  const parsed: unknown[] = [];
+  for (const event of events) {
+    try {
+      parsed.push(JSON.parse(event));
+    } catch {
+      // a ping or a non-JSON event: skip it
+    }
+  }
+  const response = [...parsed].reverse().find((value) => {
+    const record = asRecord(value);
+    return "result" in record || "error" in record;
+  });
+  if (response !== undefined) return response;
+  if (parsed.length > 0) return parsed[parsed.length - 1];
+  return JSON.parse(body.trim());
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -40,11 +63,13 @@ export function cmcDossierAdapter(endpoint = "https://mcp.coinmarketcap.com/x402
     }),
     async deliver(response) {
       if (!response.ok) throw new DeliveryError("merchant_error", `CoinMarketCap answered HTTP ${response.status}`);
+      const body = await response.text();
       let rpc: Record<string, unknown>;
       try {
-        rpc = asRecord(parseSseJson(await response.text()));
+        rpc = asRecord(parseSseJson(body));
       } catch {
-        throw new DeliveryError("bad_response", "CoinMarketCap returned an unreadable response");
+        const excerpt = body.replace(/\s+/g, " ").trim().slice(0, 200);
+        throw new DeliveryError("bad_response", `CoinMarketCap returned an unreadable response: ${excerpt || "(empty body)"}`);
       }
       if (rpc.error) throw new DeliveryError("rpc_error", `CoinMarketCap error: ${JSON.stringify(rpc.error).slice(0, 200)}`);
       const result = asRecord(rpc.result);

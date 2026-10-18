@@ -215,6 +215,20 @@ describe("createAgenticWallet", () => {
     expect((error as SaleError).code).toBe("aw_swap_failed");
   });
 
+  it("judges the window at signing time and waits out a validAfter a few seconds ahead (live 2026-10-11)", async () => {
+    const header = signedHeader("1800000005", "1800000600");
+    const { wallet, sleeps } = awWallet(
+      [
+        () => ({ success: true, data: { paymentId: "p1", options: [{ index: 1, status: "READY_TO_SIGN", reasons: [], originalAccept: accept }] } }),
+        () => ({ success: true, data: { paymentHeaderName: "PAYMENT-SIGNATURE", paymentHeaderValue: header, signatureExpiresAt: 1800000600 } }),
+      ],
+      [],
+    );
+    const result = await wallet.signPayment(challenge, selected, 1_799_999_990);
+    expect(result).toEqual({ name: "PAYMENT-SIGNATURE", value: header });
+    expect(sleeps).toEqual([7000]);
+  });
+
   it("previews until the matching option is READY_TO_SIGN, signs, and checks the window", async () => {
     const calls: string[][] = [];
     const header = signedHeader("1799999400", "1800000600");

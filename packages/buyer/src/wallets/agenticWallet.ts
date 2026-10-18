@@ -16,6 +16,9 @@ export interface AgenticWalletDeps {
   swapTimeoutMs?: number;
 }
 
+// How far ahead of our clock the Agentic Wallet's validAfter may be (signer clock skew); within it we wait.
+const AW_MAX_FUTURE_SEC = 30;
+
 export function createAgenticWallet(deps: AgenticWalletDeps): PayerWallet {
   const pollMs = deps.pollMs ?? 3000;
   const swapTimeoutMs = deps.swapTimeoutMs ?? 120_000;
@@ -70,8 +73,13 @@ export function createAgenticWallet(deps: AgenticWalletDeps): PayerWallet {
         const option = matchOption(preview.options, selected);
         if (option?.status === "READY_TO_SIGN") {
           const signed = await deps.baw.x402Sign(preview.paymentId, option.index);
-          const window = signedHeaderWindow(signed.headerValue, nowSec);
+          // Judge the window when the signature exists, not when signPayment started: the preview/sign round
+          // trips take seconds and the Agentic Wallet stamps validAfter with its own "now" (live 2026-10-11:
+          // "signature is not valid yet" against the stale start time).
+          const signedAtSec = Math.max(nowSec, Math.floor(deps.nowMs() / 1000));
+          const window = signedHeaderWindow(signed.headerValue, signedAtSec, AW_MAX_FUTURE_SEC);
           if (!window.ok) throw new SaleError("aw_window", window.reason ?? "bad signature window");
+          if (window.waitSec > 0) await deps.sleep(window.waitSec * 1000);
           return { name: signed.headerName, value: signed.headerValue };
         }
         if (option?.status === "NOT_SIGNABLE") {

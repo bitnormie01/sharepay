@@ -77,7 +77,15 @@ describe("signedHeaderWindow", () => {
     });
 
   it("accepts a window that is live now and ends within an hour", () => {
-    expect(signedHeaderWindow(header("1000", "1500"), 1200)).toEqual({ ok: true, reason: null });
+    expect(signedHeaderWindow(header("1000", "1500"), 1200)).toEqual({ ok: true, reason: null, waitSec: 0 });
+  });
+
+  it("tolerates a validAfter a few seconds ahead and says how long to wait", () => {
+    expect(signedHeaderWindow(header("1210", "2000"), 1200, 30)).toEqual({ ok: true, reason: null, waitSec: 12 });
+    expect(signedHeaderWindow(header("1200", "2000"), 1200, 30)).toEqual({ ok: true, reason: null, waitSec: 2 });
+    expect(signedHeaderWindow(header("1320", "2000"), 1200, 30).reason).toBe("signature is not valid yet");
+    expect(signedHeaderWindow(header("1210", "2000"), 1200).ok).toBe(false);
+    expect(signedHeaderWindow(header("1210", "1215"), 1200, 30).reason).toContain("expires");
   });
 
   it("rejects future, expired, too-long and undecodable windows", () => {
